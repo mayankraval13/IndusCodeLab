@@ -98,6 +98,31 @@ function makePractical({
 /** Sample practicals keyed by "SubjectCode::UnitTitle" */
 const PRACTICALS_BY_UNIT = {
   "CS201::Arrays & Strings": [
+    {
+      title: "Practical: Hello Compiler",
+      description:
+        "Write a program that prints Hello. Use Run to see stdout/stderr.",
+      difficulty: Difficulty.EASY,
+      tags: ["practical", "run"],
+      examples: {
+        PYTHON: { input: "", output: "Hello", explanation: "Print Hello" },
+        JAVA: { input: "", output: "Hello", explanation: "Print Hello" },
+        C: { input: "", output: "Hello", explanation: "Print Hello" },
+      },
+      constraints: "None",
+      hints: null,
+      editorial: null,
+      testCases: [],
+      codeSnippets: {
+        PYTHON: 'print("Hello")\n',
+        JAVA: 'public class Main {\n  public static void main(String[] args) {\n    System.out.println("Hello");\n  }\n}\n',
+        C: '#include <stdio.h>\nint main() {\n  printf("Hello\\n");\n  return 0;\n}\n',
+        CPP: '#include <iostream>\nint main() {\n  std::cout << "Hello" << std::endl;\n  return 0;\n}\n',
+      },
+      referenceSolution: {},
+      type: ProblemType.PRACTICAL,
+      executionMode: ExecutionMode.JUDGE0_RUN,
+    },
     makePractical({
       title: "Reverse an Array",
       description:
