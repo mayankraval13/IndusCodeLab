@@ -2,7 +2,13 @@ import bcrypt from "bcryptjs";
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
-import { PrismaClient, UserRole } from "../src/generated/prisma/index.js";
+import {
+  PrismaClient,
+  UserRole,
+  Difficulty,
+  ProblemType,
+  ExecutionMode,
+} from "../src/generated/prisma/index.js";
 
 const prisma = new PrismaClient();
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -36,6 +42,306 @@ function normalizeProblem(raw, userId) {
   };
 }
 
+/** Starter templates for JUDGE0_RUN practicals (C / C++ / Java / Python). */
+function runModeSnippets({ cBody, cppBody, javaBody, pythonBody }) {
+  return {
+    C: `#include <stdio.h>\n\nint main() {\n${cBody}\n    return 0;\n}\n`,
+    CPP: `#include <iostream>\n#include <vector>\n#include <string>\nusing namespace std;\n\nint main() {\n${cppBody}\n    return 0;\n}\n`,
+    JAVA: `import java.util.Scanner;\n\npublic class Main {\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n${javaBody}\n        sc.close();\n    }\n}\n`,
+    PYTHON: `${pythonBody}\n`,
+  };
+}
+
+function makePractical({
+  title,
+  description,
+  difficulty,
+  tags,
+  exampleInput,
+  exampleOutput,
+  explanation,
+  snippets,
+}) {
+  return {
+    title,
+    description,
+    difficulty,
+    tags,
+    examples: {
+      PYTHON: {
+        input: exampleInput,
+        output: exampleOutput,
+        explanation,
+      },
+      JAVA: {
+        input: exampleInput,
+        output: exampleOutput,
+        explanation,
+      },
+      C: {
+        input: exampleInput,
+        output: exampleOutput,
+        explanation,
+      },
+    },
+    constraints: "1 ≤ n ≤ 10^5 (unless stated otherwise in the description)",
+    hints: null,
+    editorial: null,
+    testCases: [],
+    codeSnippets: snippets,
+    referenceSolution: {},
+    type: ProblemType.PRACTICAL,
+    executionMode: ExecutionMode.JUDGE0_RUN,
+  };
+}
+
+/** Sample practicals keyed by "SubjectCode::UnitTitle" */
+const PRACTICALS_BY_UNIT = {
+  "CS201::Arrays & Strings": [
+    makePractical({
+      title: "Reverse an Array",
+      description:
+        "Read an integer n, then n integers. Print the array in reverse order (space-separated).",
+      difficulty: Difficulty.EASY,
+      tags: ["arrays", "practical"],
+      exampleInput: "4\n1 2 3 4",
+      exampleOutput: "4 3 2 1",
+      explanation: "Reversing [1, 2, 3, 4] gives [4, 3, 2, 1].",
+      snippets: runModeSnippets({
+        cBody:
+          "    int n;\n    scanf(\"%d\", &n);\n    int a[n];\n    for (int i = 0; i < n; i++) scanf(\"%d\", &a[i]);\n    // Write your code here\n",
+        cppBody:
+          "    int n;\n    cin >> n;\n    vector<int> a(n);\n    for (int i = 0; i < n; i++) cin >> a[i];\n    // Write your code here\n",
+        javaBody:
+          "        int n = sc.nextInt();\n        int[] a = new int[n];\n        for (int i = 0; i < n; i++) a[i] = sc.nextInt();\n        // Write your code here\n",
+        pythonBody:
+          "n = int(input())\na = list(map(int, input().split()))\n# Write your code here\n",
+      }),
+    }),
+    makePractical({
+      title: "Count Vowels in a String",
+      description:
+        "Read a single line of text. Print the number of vowels (a, e, i, o, u — case insensitive).",
+      difficulty: Difficulty.EASY,
+      tags: ["strings", "practical"],
+      exampleInput: "LeetLab",
+      exampleOutput: "3",
+      explanation: "Vowels in 'LeetLab' are e, e, a → 3.",
+      snippets: runModeSnippets({
+        cBody:
+          '    char s[1001];\n    fgets(s, sizeof(s), stdin);\n    // Write your code here\n',
+        cppBody:
+          "    string s;\n    getline(cin, s);\n    // Write your code here\n",
+        javaBody:
+          "        String s = sc.nextLine();\n        // Write your code here\n",
+        pythonBody: "s = input()\n# Write your code here\n",
+      }),
+    }),
+  ],
+  "CS201::Trees": [
+    makePractical({
+      title: "Height of a Binary Tree (Level Order Input)",
+      description:
+        "You are given n (number of nodes) and an array of n integers representing a complete binary tree in level order (-1 means null). Compute and print the height of the tree. Height of a single-node tree is 1.",
+      difficulty: Difficulty.MEDIUM,
+      tags: ["trees", "practical"],
+      exampleInput: "7\n1 2 3 4 5 -1 -1",
+      exampleOutput: "3",
+      explanation: "Root 1 has children 2 and 3; 2 has children 4 and 5 → height 3.",
+      snippets: runModeSnippets({
+        cBody:
+          "    int n;\n    scanf(\"%d\", &n);\n    int a[n];\n    for (int i = 0; i < n; i++) scanf(\"%d\", &a[i]);\n    // Write your code here\n",
+        cppBody:
+          "    int n;\n    cin >> n;\n    vector<int> a(n);\n    for (int i = 0; i < n; i++) cin >> a[i];\n    // Write your code here\n",
+        javaBody:
+          "        int n = sc.nextInt();\n        int[] a = new int[n];\n        for (int i = 0; i < n; i++) a[i] = sc.nextInt();\n        // Write your code here\n",
+        pythonBody:
+          "n = int(input())\na = list(map(int, input().split()))\n# Write your code here\n",
+      }),
+    }),
+  ],
+  "CS201::Graphs": [
+    makePractical({
+      title: "Count Connected Components",
+      description:
+        "Given n nodes (1..n) and m undirected edges, print the number of connected components.",
+      difficulty: Difficulty.MEDIUM,
+      tags: ["graphs", "practical"],
+      exampleInput: "5 3\n1 2\n2 3\n4 5",
+      exampleOutput: "2",
+      explanation: "Components: {1,2,3} and {4,5}.",
+      snippets: runModeSnippets({
+        cBody:
+          "    int n, m;\n    scanf(\"%d %d\", &n, &m);\n    // Read m edges and write your code here\n",
+        cppBody:
+          "    int n, m;\n    cin >> n >> m;\n    // Read m edges and write your code here\n",
+        javaBody:
+          "        int n = sc.nextInt();\n        int m = sc.nextInt();\n        // Read m edges and write your code here\n",
+        pythonBody:
+          "n, m = map(int, input().split())\n# Read m edges and write your code here\n",
+      }),
+    }),
+  ],
+  "CS301::Relational Model": [
+    makePractical({
+      title: "Check Candidate Key Uniqueness",
+      description:
+        "Read n rows, each with two space-separated integers (id, value). Print YES if all ids are unique (candidate key), otherwise NO.",
+      difficulty: Difficulty.EASY,
+      tags: ["dbms", "relational-model", "practical"],
+      exampleInput: "3\n1 10\n2 20\n3 10",
+      exampleOutput: "YES",
+      explanation: "All ids (1,2,3) are unique.",
+      snippets: runModeSnippets({
+        cBody:
+          "    int n;\n    scanf(\"%d\", &n);\n    // Write your code here\n",
+        cppBody:
+          "    int n;\n    cin >> n;\n    // Write your code here\n",
+        javaBody:
+          "        int n = sc.nextInt();\n        // Write your code here\n",
+        pythonBody: "n = int(input())\n# Write your code here\n",
+      }),
+    }),
+  ],
+  "CS301::SQL & Queries": [
+    makePractical({
+      title: "Simulate SELECT with WHERE",
+      description:
+        "Read n student records as (roll marks). Then read threshold t. Print roll numbers of students with marks >= t, space-separated in input order. If none, print -1.",
+      difficulty: Difficulty.EASY,
+      tags: ["dbms", "queries", "practical"],
+      exampleInput: "4\n101 45\n102 78\n103 60\n104 90\n60",
+      exampleOutput: "102 103 104",
+      explanation: "Students with marks >= 60 are 102, 103, 104.",
+      snippets: runModeSnippets({
+        cBody:
+          "    int n;\n    scanf(\"%d\", &n);\n    // Write your code here\n",
+        cppBody:
+          "    int n;\n    cin >> n;\n    // Write your code here\n",
+        javaBody:
+          "        int n = sc.nextInt();\n        // Write your code here\n",
+        pythonBody: "n = int(input())\n# Write your code here\n",
+      }),
+    }),
+  ],
+  "CS301::Transactions & Indexing": [
+    makePractical({
+      title: "Detect Dirty Read Scenario",
+      description:
+        "You are given a sequence of transaction operations as strings (W1 x, R2 x, C1, A1, etc.). Print DIRTY if a transaction reads a value written by another uncommitted transaction, otherwise CLEAN. For this practical, treat any R by T2 after W by T1 before C1/A1 as DIRTY.",
+      difficulty: Difficulty.MEDIUM,
+      tags: ["dbms", "transactions", "practical"],
+      exampleInput: "4\nW1 x\nR2 x\nC1\nC2",
+      exampleOutput: "DIRTY",
+      explanation: "T2 reads x written by T1 before T1 commits.",
+      snippets: runModeSnippets({
+        cBody:
+          "    int n;\n    scanf(\"%d\", &n);\n    // Write your code here\n",
+        cppBody:
+          "    int n;\n    cin >> n;\n    // Write your code here\n",
+        javaBody:
+          "        int n = sc.nextInt();\n        sc.nextLine();\n        // Write your code here\n",
+        pythonBody: "n = int(input())\n# Write your code here\n",
+      }),
+    }),
+  ],
+  "CS302::Processes & Threads": [
+    makePractical({
+      title: "FCFS CPU Scheduling",
+      description:
+        "Read n processes with burst times. Assume arrival time 0 for all. Print average waiting time (float with 2 decimals) using FCFS.",
+      difficulty: Difficulty.EASY,
+      tags: ["os", "scheduling", "practical"],
+      exampleInput: "3\n24 3 3",
+      exampleOutput: "17.00",
+      explanation: "Waiting times: 0, 24, 27 → average (0+24+27)/3 = 17.00",
+      snippets: runModeSnippets({
+        cBody:
+          "    int n;\n    scanf(\"%d\", &n);\n    int bt[n];\n    for (int i = 0; i < n; i++) scanf(\"%d\", &bt[i]);\n    // Write your code here\n",
+        cppBody:
+          "    int n;\n    cin >> n;\n    vector<int> bt(n);\n    for (int i = 0; i < n; i++) cin >> bt[i];\n    // Write your code here\n",
+        javaBody:
+          "        int n = sc.nextInt();\n        int[] bt = new int[n];\n        for (int i = 0; i < n; i++) bt[i] = sc.nextInt();\n        // Write your code here\n",
+        pythonBody:
+          "n = int(input())\nbt = list(map(int, input().split()))\n# Write your code here\n",
+      }),
+    }),
+  ],
+  "CS302::Memory Management": [
+    makePractical({
+      title: "First Fit Memory Allocation",
+      description:
+        "Read m block sizes, then n process sizes. Allocate each process to the first block that fits. Print allocated block index (0-based) for each process, or -1 if not allocated. Blocks are not split further once used.",
+      difficulty: Difficulty.MEDIUM,
+      tags: ["os", "memory", "practical"],
+      exampleInput: "5\n100 500 200 300 600\n4\n212 417 112 426",
+      exampleOutput: "1 4 2 -1",
+      explanation: "Classic first-fit allocation example.",
+      snippets: runModeSnippets({
+        cBody:
+          "    int m;\n    scanf(\"%d\", &m);\n    // Write your code here\n",
+        cppBody:
+          "    int m;\n    cin >> m;\n    // Write your code here\n",
+        javaBody:
+          "        int m = sc.nextInt();\n        // Write your code here\n",
+        pythonBody: "m = int(input())\n# Write your code here\n",
+      }),
+    }),
+  ],
+  "CS302::File Systems": [
+    makePractical({
+      title: "Simulate Contiguous File Allocation",
+      description:
+        "Disk has size blocks numbered 0..size-1 (initially free). Read q requests of (start length). For each request print ALLOCATED if the range is free and mark it used, else print FAILED.",
+      difficulty: Difficulty.MEDIUM,
+      tags: ["os", "file-systems", "practical"],
+      exampleInput: "10 3\n0 3\n2 2\n5 4",
+      exampleOutput: "ALLOCATED\nFAILED\nALLOCATED",
+      explanation:
+        "First request takes 0-2; second overlaps; third takes 5-8.",
+      snippets: runModeSnippets({
+        cBody:
+          "    int size, q;\n    scanf(\"%d %d\", &size, &q);\n    // Write your code here\n",
+        cppBody:
+          "    int size, q;\n    cin >> size >> q;\n    // Write your code here\n",
+        javaBody:
+          "        int size = sc.nextInt();\n        int q = sc.nextInt();\n        // Write your code here\n",
+        pythonBody:
+          "size, q = map(int, input().split())\n# Write your code here\n",
+      }),
+    }),
+  ],
+};
+
+async function seedPracticalsForUnit(unit, subjectCode, userId) {
+  const key = `${subjectCode}::${unit.title}`;
+  const practicals = PRACTICALS_BY_UNIT[key] || [];
+
+  for (const practical of practicals) {
+    const existing = await prisma.problem.findFirst({
+      where: {
+        title: practical.title,
+        type: ProblemType.PRACTICAL,
+        unitId: unit.id,
+      },
+    });
+
+    if (existing) {
+      console.log(`    Practical already exists: ${practical.title}`);
+      continue;
+    }
+
+    const created = await prisma.problem.create({
+      data: {
+        ...practical,
+        unitId: unit.id,
+        userId,
+      },
+    });
+    console.log(`    Seeded practical: ${created.title}`);
+  }
+}
+
 async function main() {
   const hashedPassword = await bcrypt.hash(ADMIN_PASSWORD, 10);
 
@@ -67,9 +373,6 @@ async function main() {
     const problem = await prisma.problem.create({ data: problemData });
     console.log(`Seeded problem: ${problem.title} (id: ${problem.id})`);
   }
-
-  const count = await prisma.problem.count();
-  console.log(`Total problems in database: ${count}`);
 
   const subjectsWithUnits = [
     {
@@ -110,29 +413,37 @@ async function main() {
 
     console.log(`Subject ready: ${subject.name} (${subject.code})`);
 
-    for (const unit of units) {
-      const existingUnit = await prisma.unit.findFirst({
-        where: { subjectId: subject.id, title: unit.title },
+    for (const unitDef of units) {
+      let unit = await prisma.unit.findFirst({
+        where: { subjectId: subject.id, title: unitDef.title },
       });
 
-      if (existingUnit) {
+      if (unit) {
         console.log(`  Unit already exists: ${unit.title}`);
       } else {
-        const created = await prisma.unit.create({
+        unit = await prisma.unit.create({
           data: {
-            title: unit.title,
-            order: unit.order,
+            title: unitDef.title,
+            order: unitDef.order,
             subjectId: subject.id,
           },
         });
-        console.log(`  Seeded unit: ${created.title}`);
+        console.log(`  Seeded unit: ${unit.title}`);
       }
+
+      await seedPracticalsForUnit(unit, code, admin.id);
     }
   }
 
   const subjectCount = await prisma.subject.count();
   const unitCount = await prisma.unit.count();
+  const practicalCount = await prisma.problem.count({
+    where: { type: ProblemType.PRACTICAL },
+  });
+  const problemCount = await prisma.problem.count();
+
   console.log(`Total subjects: ${subjectCount}, total units: ${unitCount}`);
+  console.log(`Total practicals: ${practicalCount}, total problems: ${problemCount}`);
 }
 
 main()
