@@ -38,11 +38,11 @@ export default function LoginPage() {
           <form onSubmit={handleSubmit((data) => login(data))} className="space-y-5">
             <Field label="Email" error={errors.email?.message}>
               <div className="relative">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-ll-muted" />
+                <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-ll-muted pointer-events-none" />
                 <input
                   type="email"
                   {...register("email")}
-                  className="ll-input w-full pl-10"
+                  className="ll-input w-full py-2.5 pl-11 pr-3.5"
                   placeholder="you@example.com"
                 />
               </div>
@@ -50,16 +50,17 @@ export default function LoginPage() {
 
             <Field label="Password" error={errors.password?.message}>
               <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-ll-muted" />
+                <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-ll-muted pointer-events-none" />
                 <input
                   type={showPassword ? "text" : "password"}
                   {...register("password")}
-                  className="ll-input w-full pl-10 pr-10"
-                  placeholder="••••••••"
+                  className="ll-input w-full py-2.5 pl-11 pr-11"
+                  placeholder="Enter your password"
                 />
                 <button
                   type="button"
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-ll-muted"
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-ll-muted hover:text-ll-text transition-colors"
                   onClick={() => setShowPassword(!showPassword)}
                 >
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}

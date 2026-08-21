@@ -131,11 +131,11 @@ export default function ProblemTable({ problems, fixedType = null }) {
 
       <div className="px-4 sm:px-5 py-4 border-b border-ll-border flex flex-col lg:flex-row gap-3">
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-ll-muted" />
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-ll-muted pointer-events-none" />
           <input
             type="text"
             placeholder="Search problems..."
-            className="ll-input w-full pl-9"
+            className="ll-input w-full pl-11 pr-3.5"
             value={search}
             onChange={(e) => {
               setSearch(e.target.value);

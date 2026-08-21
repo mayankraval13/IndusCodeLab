@@ -32,103 +32,110 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-/* LeetCode-style utilities */
-.ll-panel {
-  background-color: var(--color-ll-surface);
-  border: 1px solid var(--color-ll-border);
-}
+/* LeetCode-style components. Kept in the `components` layer so per-element
+   Tailwind utilities (e.g. `pl-10` for an inset icon) still win. */
+@layer components {
+  .ll-panel {
+    background-color: var(--color-ll-surface);
+    border: 1px solid var(--color-ll-border);
+  }
 
-.ll-input {
-  background-color: var(--color-ll-surface-2);
-  border: 1px solid var(--color-ll-border);
-  color: var(--color-ll-text);
-  border-radius: 0.5rem;
-  padding: 0.5rem 0.75rem;
-  font-size: 0.875rem;
-  outline: none;
-  transition: border-color 0.15s;
-}
+  .ll-input {
+    background-color: var(--color-ll-surface-2);
+    border: 1px solid var(--color-ll-border);
+    color: var(--color-ll-text);
+    border-radius: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.875rem;
+    outline: none;
+    transition: border-color 0.15s;
+  }
 
-.ll-input:focus {
-  border-color: var(--color-ll-accent);
-}
+  .ll-input::placeholder {
+    color: var(--color-ll-muted);
+  }
 
-.ll-btn-primary {
-  background-color: var(--color-ll-accent);
-  color: #0a0a0b;
-  font-weight: 600;
-  border-radius: 0.5rem;
-  padding: 0.5rem 1rem;
-  font-size: 0.875rem;
-  transition: background-color 0.15s;
-}
+  .ll-input:focus {
+    border-color: var(--color-ll-accent);
+  }
 
-.ll-btn-primary:hover:not(:disabled) {
-  background-color: var(--color-ll-accent-hover);
-}
+  .ll-btn-primary {
+    background-color: var(--color-ll-accent);
+    color: #0a0a0b;
+    font-weight: 600;
+    border-radius: 0.5rem;
+    padding: 0.5rem 1rem;
+    font-size: 0.875rem;
+    transition: background-color 0.15s;
+  }
 
-.ll-btn-primary:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
+  .ll-btn-primary:hover:not(:disabled) {
+    background-color: var(--color-ll-accent-hover);
+  }
 
-.ll-btn-ghost {
-  background: transparent;
-  color: var(--color-ll-muted);
-  border-radius: 0.5rem;
-  padding: 0.5rem 0.75rem;
-  font-size: 0.875rem;
-  transition: color 0.15s, background-color 0.15s;
-}
+  .ll-btn-primary:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
 
-.ll-btn-ghost:hover {
-  color: var(--color-ll-text);
-  background-color: var(--color-ll-surface-2);
-}
+  .ll-btn-ghost {
+    background: transparent;
+    color: var(--color-ll-muted);
+    border-radius: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.875rem;
+    transition: color 0.15s, background-color 0.15s;
+  }
 
-.ll-btn-success {
-  background-color: var(--color-ll-success);
-  color: #0a0a0b;
-  font-weight: 600;
-  border-radius: 0.5rem;
-  padding: 0.5rem 1rem;
-  font-size: 0.875rem;
-}
+  .ll-btn-ghost:hover {
+    color: var(--color-ll-text);
+    background-color: var(--color-ll-surface-2);
+  }
 
-.ll-btn-success:hover:not(:disabled) {
-  filter: brightness(1.1);
-}
+  .ll-btn-success {
+    background-color: var(--color-ll-success);
+    color: #0a0a0b;
+    font-weight: 600;
+    border-radius: 0.5rem;
+    padding: 0.5rem 1rem;
+    font-size: 0.875rem;
+  }
 
-.ll-tab {
-  padding: 0.625rem 1rem;
-  font-size: 0.875rem;
-  font-weight: 500;
-  color: var(--color-ll-muted);
-  border-bottom: 2px solid transparent;
-  transition: color 0.15s, border-color 0.15s;
-}
+  .ll-btn-success:hover:not(:disabled) {
+    filter: brightness(1.1);
+  }
 
-.ll-tab:hover {
-  color: var(--color-ll-text);
-}
+  .ll-tab {
+    padding: 0.625rem 1rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--color-ll-muted);
+    border-bottom: 2px solid transparent;
+    transition: color 0.15s, border-color 0.15s;
+  }
 
-.ll-tab-active {
-  color: var(--color-ll-text);
-  border-bottom-color: var(--color-ll-accent);
-}
+  .ll-tab:hover {
+    color: var(--color-ll-text);
+  }
 
-.ll-code-block {
-  font-family: var(--font-mono);
-  background-color: var(--color-ll-surface-2);
-  border: 1px solid var(--color-ll-border);
-  border-radius: 0.5rem;
-  padding: 0.75rem 1rem;
-  font-size: 0.8125rem;
-  line-height: 1.6;
-}
+  .ll-tab-active {
+    color: var(--color-ll-text);
+    border-bottom-color: var(--color-ll-accent);
+  }
 
-.ll-table-row:hover {
-  background-color: var(--color-ll-surface-2);
+  .ll-code-block {
+    font-family: var(--font-mono);
+    background-color: var(--color-ll-surface-2);
+    border: 1px solid var(--color-ll-border);
+    border-radius: 0.5rem;
+    padding: 0.75rem 1rem;
+    font-size: 0.8125rem;
+    line-height: 1.6;
+  }
+
+  .ll-table-row:hover {
+    background-color: var(--color-ll-surface-2);
+  }
 }
 
 /* Practical workspace — centered-to-split animation */
