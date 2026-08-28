@@ -15,12 +15,23 @@ import Layout from "./layout/Layout.jsx";
 import AdminRoute from "./components/AdminRoute.jsx";
 import AddProblem from "./page/AddProblem.jsx";
 import AdminSubjectsPage from "./page/AdminSubjectsPage.jsx";
+import AdminBatchesPage from "./page/AdminBatchesPage.jsx";
+import AdminFacultyPage from "./page/AdminFacultyPage.jsx";
+import AdminAllocationsPage from "./page/AdminAllocationsPage.jsx";
+import FacultySectionsPage from "./page/FacultySectionsPage.jsx";
+import FacultyOfferingPage from "./page/FacultyOfferingPage.jsx";
+import FacultyAssignmentPage from "./page/FacultyAssignmentPage.jsx";
+import StudentAssignmentsPage from "./page/StudentAssignmentsPage.jsx";
+import StudentAssignmentPage from "./page/StudentAssignmentPage.jsx";
+import RoleRoute from "./components/RoleRoute.jsx";
 import ProblemPage from "./page/ProblemPage.jsx";
 import PracticalProblemPage from "./page/PracticalProblemPage.jsx";
+import ChangePasswordPage from "./page/ChangePasswordPage.jsx";
 import Logo from "./components/ui/Logo.jsx";
 
 export default function App() {
-  const { authUser, checkAuth, isCheckingAuth } = useAuthStore();
+  const { authUser, checkAuth, isCheckingAuth, passwordChangeRequired } =
+    useAuthStore();
 
   useEffect(() => {
     checkAuth();
@@ -32,6 +43,23 @@ export default function App() {
         <Logo showText />
         <Loader2 className="w-8 h-8 text-ll-accent animate-spin" />
       </div>
+    );
+  }
+
+  // Replaces the router entirely: the server rejects every other route until
+  // the password is changed, so there is nowhere else worth navigating to.
+  if (authUser && passwordChangeRequired) {
+    return (
+      <>
+        <Toaster
+          position="top-center"
+          toastOptions={{
+            className: "!bg-ll-surface !text-ll-text !border !border-ll-border",
+            duration: 3000,
+          }}
+        />
+        <ChangePasswordPage />
+      </>
     );
   }
 
@@ -68,6 +96,18 @@ export default function App() {
             path="exams"
             element={authUser ? <ExamsPage /> : <Navigate to="/login" />}
           />
+          <Route
+            path="assignments"
+            element={
+              authUser ? <StudentAssignmentsPage /> : <Navigate to="/login" />
+            }
+          />
+          <Route
+            path="assignments/:id"
+            element={
+              authUser ? <StudentAssignmentPage /> : <Navigate to="/login" />
+            }
+          />
         </Route>
 
         <Route
@@ -102,6 +142,29 @@ export default function App() {
           <Route
             path="/admin/subjects"
             element={authUser ? <AdminSubjectsPage /> : <Navigate to="/" />}
+          />
+          <Route
+            path="/admin/batches"
+            element={authUser ? <AdminBatchesPage /> : <Navigate to="/" />}
+          />
+          <Route
+            path="/admin/faculty"
+            element={authUser ? <AdminFacultyPage /> : <Navigate to="/" />}
+          />
+          <Route
+            path="/admin/allocations"
+            element={authUser ? <AdminAllocationsPage /> : <Navigate to="/" />}
+          />
+        </Route>
+        <Route element={<RoleRoute roles={["FACULTY"]} />}>
+          <Route path="/faculty/sections" element={<FacultySectionsPage />} />
+          <Route
+            path="/faculty/offerings/:offeringId"
+            element={<FacultyOfferingPage />}
+          />
+          <Route
+            path="/faculty/assignments/:id"
+            element={<FacultyAssignmentPage />}
           />
         </Route>
       </Routes>

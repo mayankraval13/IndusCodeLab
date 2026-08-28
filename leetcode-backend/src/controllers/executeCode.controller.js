@@ -6,6 +6,11 @@ import {
   submitAndWait,
   submitBatch,
 } from "../libs/judge0.lib.js";
+import {
+  PRACTICAL_FAILED,
+  PRACTICAL_SUBMITTED,
+} from "../libs/practicalStatus.js";
+import { evaluateSubmissionWindow } from "./assignment.controller.js";
 
 /** Raw compiler-style run for JUDGE0_RUN practicals — no test-case grading. */
 export const executeRun = async (req, res) => {
@@ -59,6 +64,107 @@ export const executeRun = async (req, res) => {
   } catch (error) {
     console.error("Error running code:", error.message);
     return res.status(500).json({ error: "Failed to run code" });
+  }
+};
+
+/**
+ * Records a practical submission. The code is re-run server-side rather than
+ * trusting the output the browser happens to be showing — faculty check these
+ * outputs physically, so they have to be what the submitted code actually
+ * produces. Resubmissions append, giving a timestamped history.
+ */
+export const submitPractical = async (req, res) => {
+  try {
+    const { problemId, code, language, stdin } = req.body;
+
+    if (!problemId || !code || !language) {
+      return res
+        .status(400)
+        .json({ error: "problemId, code, and language are required" });
+    }
+
+    const problem = await db.problem.findUnique({
+      where: { id: problemId },
+      select: { id: true, executionMode: true, type: true },
+    });
+
+    if (!problem) {
+      return res.status(404).json({ error: "Problem not found" });
+    }
+
+    const allowsRun =
+      problem.executionMode === "JUDGE0_RUN" || problem.type === "PRACTICAL";
+    if (!allowsRun) {
+      return res.status(400).json({
+        error: "This problem is graded against test cases, not submitted",
+      });
+    }
+
+    const language_id = getJudge0LanguageId(language);
+    if (!language_id) {
+      return res.status(400).json({ error: `Unsupported language: ${language}` });
+    }
+
+    // Checked before spending a Judge0 run on work that will be refused.
+    const window = await evaluateSubmissionWindow(req.user.id, problemId);
+    if (!window.allowed) {
+      return res.status(403).json({
+        error: window.reason ?? "Submissions are closed for this practical",
+        code: "SUBMISSION_CLOSED",
+      });
+    }
+
+    const result = await submitAndWait({
+      source_code: code,
+      language_id,
+      stdin: stdin ?? "",
+    });
+
+    // Judge0 status 3 is "Accepted", which for an ungraded run just means the
+    // program compiled and exited cleanly.
+    const ran = result.status?.id === 3;
+
+    const submission = await db.submission.create({
+      data: {
+        userId: req.user.id,
+        problemId,
+        sourceCode: code,
+        language: getLanguageName(language_id),
+        stdin: stdin ?? "",
+        stdout: result.stdout ?? null,
+        stderr: result.stderr ?? null,
+        complieOutput: result.compile_output ?? null,
+        status: ran ? PRACTICAL_SUBMITTED : PRACTICAL_FAILED,
+        memory: result.memory ? `${result.memory} KB` : null,
+        time: result.time ? `${result.time} sec` : null,
+      },
+    });
+
+    // A practical counts as done once it runs; there is nothing to grade. Broken
+    // code is still stored so the attempt is not lost, but it does not count.
+    if (ran) {
+      await db.problemSolved.upsert({
+        where: { userId_problemId: { userId: req.user.id, problemId } },
+        update: {},
+        create: { userId: req.user.id, problemId },
+      });
+    }
+
+    return res.status(201).json({
+      success: true,
+      message: ran
+        ? window.isLate
+          ? "Practical submitted late"
+          : "Practical submitted successfully"
+        : "Submission saved, but your code did not run cleanly",
+      ran,
+      isLate: window.isLate,
+      assignment: window.assignment,
+      submission,
+    });
+  } catch (error) {
+    console.error("Error submitting practical:", error.message);
+    return res.status(500).json({ error: "Failed to submit practical" });
   }
 };
 

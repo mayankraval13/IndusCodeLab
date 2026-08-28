@@ -1,7 +1,7 @@
 import jwt from "jsonwebtoken";
 import { db } from "../libs/db.js";
 
-export const authMiddleware = async (req, res, next) => {
+const loadUser = async (req, res, next) => {
      try {
         const token = req.cookies.jwt;
 
@@ -30,7 +30,9 @@ export const authMiddleware = async (req, res, next) => {
                 image:true,
                 name:true,
                 email:true,
-                role:true
+                role:true,
+                enrollmentNo:true,
+                mustChangePassword:true
             }
         });
 
@@ -48,27 +50,35 @@ export const authMiddleware = async (req, res, next) => {
     }
 }
 
-export const checkAdmin = async (req, res, next) => {
-    try {
-        const userId = req.user.id;
-        const user = await db.user.findUnique({
-            where:{
-                id:userId
-            },
-            select:{
-                role:true
-            }
-        });
+/**
+ * Authentication without the forced-password-change gate. Only for the handful
+ * of routes a user must still reach while their password is expired: logout,
+ * check and change-password.
+ */
+export const authMiddlewareAllowPasswordChange = loadUser;
 
-        if(user.role !== "ADMIN"){
+/**
+ * Standard authentication. Refuses every request while mustChangePassword is
+ * set, so the gate cannot be bypassed by skipping the frontend screen.
+ */
+export const authMiddleware = (req, res, next) =>
+    loadUser(req, res, () => {
+        if(req.user.mustChangePassword){
             return res.status(403).json({
-                message:"Forbidden - User is not an admin"
-            })
+                code:"PASSWORD_CHANGE_REQUIRED",
+                message:"You must change your password before continuing"
+            });
         }
         next();
+    });
 
-    } catch (error) {
-        console.error("Error checking admin role:", error);
-        res.status(500).json({message:"Error checking admin role"});
+export const requireRole = (...roles) => (req, res, next) => {
+    if(!req.user || !roles.includes(req.user.role)){
+        return res.status(403).json({
+            message:"Forbidden - insufficient permissions"
+        });
     }
+    next();
 }
+
+export const checkAdmin = requireRole("ADMIN");

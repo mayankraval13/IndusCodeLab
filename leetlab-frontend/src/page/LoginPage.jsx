@@ -2,15 +2,17 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Link } from "react-router-dom";
-import { Eye, EyeOff, Loader2, Lock, Mail } from "lucide-react";
+import { Eye, EyeOff, IdCard, Loader2, Lock } from "lucide-react";
 import { z } from "zod";
 import AuthImagePattern from "../components/AuthImagePattern.jsx";
 import { useAuthStore } from "../store/useAuthStore.js";
 import Logo from "../components/ui/Logo.jsx";
 
+// Deliberately no format check on the identifier — the server decides whether
+// it matches an email or an enrollment number.
 const LoginSchema = z.object({
-  email: z.string().email("Enter a valid email"),
-  password: z.string().min(6, "Password must be at least 6 characters"),
+  identifier: z.string().trim().min(1, "Enter your enrollment number or email"),
+  password: z.string().min(1, "Enter your password"),
 });
 
 export default function LoginPage() {
@@ -36,14 +38,20 @@ export default function LoginPage() {
           </div>
 
           <form onSubmit={handleSubmit((data) => login(data))} className="space-y-5">
-            <Field label="Email" error={errors.email?.message}>
+            <Field
+              label="Enrollment number or email"
+              error={errors.identifier?.message}
+            >
               <div className="relative">
-                <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-ll-muted pointer-events-none" />
+                <IdCard className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-ll-muted pointer-events-none" />
                 <input
-                  type="email"
-                  {...register("email")}
+                  type="text"
+                  autoComplete="username"
+                  autoCapitalize="none"
+                  spellCheck={false}
+                  {...register("identifier")}
                   className="ll-input w-full py-2.5 pl-11 pr-3.5"
-                  placeholder="you@example.com"
+                  placeholder="IU2341230001 or you@example.com"
                 />
               </div>
             </Field>
@@ -53,6 +61,7 @@ export default function LoginPage() {
                 <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-ll-muted pointer-events-none" />
                 <input
                   type={showPassword ? "text" : "password"}
+                  autoComplete="current-password"
                   {...register("password")}
                   className="ll-input w-full py-2.5 pl-11 pr-11"
                   placeholder="Enter your password"

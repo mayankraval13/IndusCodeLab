@@ -16,6 +16,41 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ADMIN_EMAIL = "admin@leetlab.com";
 const ADMIN_PASSWORD = "admin123";
 
+const FACULTY = {
+  name: "Anil Sharma",
+  email: "anil.sharma@iite.indusuni.ac.in",
+  password: "Faculty@123",
+};
+
+const ENROLLMENT_PREFIX = "IU234123";
+
+/**
+ * Sections are created empty — enrolment is done through
+ * POST /admin/batches/:id/enroll-range so the dry run gets exercised.
+ */
+const BATCHES = [
+  { name: "A", enrollmentPrefix: ENROLLMENT_PREFIX, serialStart: 1, serialEnd: 132 },
+  { name: "B", enrollmentPrefix: ENROLLMENT_PREFIX, serialStart: 133, serialEnd: 257 },
+];
+
+/**
+ * Section A of the IU234123 cohort (year 23, course 4, branch 123).
+ * Each student's enrollment number doubles as their temporary password;
+ * mustChangePassword forces it to be replaced at first login.
+ */
+const STUDENTS = [
+  { enrollmentNo: "IU2341230001", name: "Ram Patel", email: "ram.23.cse@iite.indusuni.ac.in" },
+  { enrollmentNo: "IU2341230002", name: "Priya Shah", email: "priya.23.cse@iite.indusuni.ac.in" },
+  { enrollmentNo: "IU2341230003", name: "Arjun Mehta", email: "arjun.23.cse@iite.indusuni.ac.in" },
+  { enrollmentNo: "IU2341230004", name: "Sneha Desai", email: "sneha.23.cse@iite.indusuni.ac.in" },
+  { enrollmentNo: "IU2341230005", name: "Rohan Joshi", email: "rohan.23.cse@iite.indusuni.ac.in" },
+  { enrollmentNo: "IU2341230006", name: "Ananya Iyer", email: "ananya.23.cse@iite.indusuni.ac.in" },
+  { enrollmentNo: "IU2341230007", name: "Karan Verma", email: "karan.23.cse@iite.indusuni.ac.in" },
+  { enrollmentNo: "IU2341230008", name: "Meera Nair", email: "meera.23.cse@iite.indusuni.ac.in" },
+  { enrollmentNo: "IU2341230009", name: "Vivek Rao", email: "vivek.23.cse@iite.indusuni.ac.in" },
+  { enrollmentNo: "IU2341230010", name: "Isha Kulkarni", email: "isha.23.cse@iite.indusuni.ac.in" },
+];
+
 function normalizeProblem(raw, userId) {
   const examples = { ...raw.examples };
   if (!examples.JAVA) {
@@ -367,6 +402,92 @@ async function seedPracticalsForUnit(unit, subjectCode, userId) {
   }
 }
 
+/**
+ * Existing accounts are left untouched rather than upserted, so re-running the
+ * seed never resets a password somebody has already changed.
+ */
+async function seedFaculty() {
+  const existing = await prisma.user.findUnique({
+    where: { email: FACULTY.email },
+  });
+
+  if (existing) {
+    console.log(`Faculty already exists: ${FACULTY.email}`);
+    return existing;
+  }
+
+  const faculty = await prisma.user.create({
+    data: {
+      name: FACULTY.name,
+      email: FACULTY.email,
+      password: await bcrypt.hash(FACULTY.password, 10),
+      role: UserRole.FACULTY,
+      mustChangePassword: true,
+      provisionedByAdmin: true,
+    },
+  });
+
+  console.log(`Seeded faculty: ${FACULTY.email} / ${FACULTY.password}`);
+  return faculty;
+}
+
+async function seedStudents() {
+  for (const student of STUDENTS) {
+    const existing = await prisma.user.findUnique({
+      where: { enrollmentNo: student.enrollmentNo },
+    });
+
+    if (existing) {
+      console.log(`  Student already exists: ${student.enrollmentNo}`);
+      continue;
+    }
+
+    await prisma.user.create({
+      data: {
+        name: student.name,
+        email: student.email,
+        enrollmentNo: student.enrollmentNo,
+        password: await bcrypt.hash(student.enrollmentNo, 10),
+        role: UserRole.USER,
+        mustChangePassword: true,
+        provisionedByAdmin: true,
+      },
+    });
+
+    console.log(
+      `  Seeded student: ${student.enrollmentNo} (${student.name}) — password is the enrollment number`
+    );
+  }
+}
+
+async function seedBatches() {
+  for (const definition of BATCHES) {
+    const existing = await prisma.batch.findUnique({
+      where: {
+        enrollmentPrefix_name: {
+          enrollmentPrefix: definition.enrollmentPrefix,
+          name: definition.name,
+        },
+      },
+      include: { _count: { select: { members: true } } },
+    });
+
+    if (existing) {
+      console.log(
+        `  Batch already exists: Section ${existing.name} (${existing._count.members} enrolled)`
+      );
+      continue;
+    }
+
+    const batch = await prisma.batch.create({ data: definition });
+    console.log(
+      `  Seeded batch: Section ${batch.name} — ${batch.enrollmentPrefix}${String(
+        batch.serialStart
+      ).padStart(4, "0")}..${String(batch.serialEnd).padStart(4, "0")}`
+    );
+  }
+}
+
 async function main() {
   const hashedPassword = await bcrypt.hash(ADMIN_PASSWORD, 10);
 
@@ -383,6 +504,14 @@ async function main() {
 
   console.log(`Admin user ready: ${ADMIN_EMAIL} / ${ADMIN_PASSWORD}`);
   console.log(`Admin id: ${admin.id}`);
+
+  await seedFaculty();
+
+  console.log("Students (Section A):");
+  await seedStudents();
+
+  console.log("Batches:");
+  await seedBatches();
 
   const samplePath = path.join(__dirname, "..", "sample.json");
   const raw = JSON.parse(fs.readFileSync(samplePath, "utf-8"));
@@ -469,6 +598,17 @@ async function main() {
 
   console.log(`Total subjects: ${subjectCount}, total units: ${unitCount}`);
   console.log(`Total practicals: ${practicalCount}, total problems: ${problemCount}`);
+
+  const studentCount = await prisma.user.count({ where: { role: UserRole.USER } });
+  const facultyCount = await prisma.user.count({
+    where: { role: UserRole.FACULTY },
+  });
+
+  const batchCount = await prisma.batch.count();
+  const memberCount = await prisma.batchMember.count();
+
+  console.log(`Total students: ${studentCount}, total faculty: ${facultyCount}`);
+  console.log(`Total batches: ${batchCount}, total enrollments: ${memberCount}`);
 }
 
 main()

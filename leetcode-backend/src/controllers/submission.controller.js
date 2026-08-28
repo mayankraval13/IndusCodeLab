@@ -24,6 +24,7 @@ export const getAllSubmissionsForProblem = async (req, res) => {
     const problemId = req.params.problemId;
     const submissions = await db.submission.findMany({
       where: { userId: userId, problemId: problemId },
+      orderBy: { createdAt: "desc" },
     });
 
     res.status(200).json({

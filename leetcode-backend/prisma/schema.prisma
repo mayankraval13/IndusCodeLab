@@ -16,6 +16,7 @@ datasource db {
 
 enum UserRole {
   USER
+  FACULTY
   ADMIN
 }
 
@@ -44,6 +45,7 @@ model Subject {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   units     Unit[]
+  offerings CourseOffering[]
 }
 
 model Unit {
@@ -67,11 +69,151 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  /// Students only — null for FACULTY and ADMIN, who sign in by email.
+  enrollmentNo String? @unique
+
+  /// Set on admin-created accounts; blocks all other routes until cleared.
+  mustChangePassword Boolean @default(false)
+
+  /// True only for accounts the institution created (seed, admin, CSV import).
+  /// Bulk enrollment matches on enrollment number alone, so without this flag a
+  /// stranger could self-register an unclaimed number and be swept into that
+  /// section along with the real students.
+  provisionedByAdmin Boolean @default(false)
+
   problems      Problem[]
   submissions   Submission[]
   problemSolved ProblemSolved[]
   playlists     Playlist[]
   codeSessions  CodeSession[]
+  batches       BatchMember[]
+  offerings         CourseOffering[] @relation("FacultyOfferings")
+  offeringsAssigned CourseOffering[] @relation("OfferingsAssignedBy")
+  notifications     Notification[]
+}
+
+/// A section of students, e.g. "A" = IU234123 + serials 0001..0132. The range
+/// is only used to bulk-resolve members; membership itself lives in
+/// BatchMember so transfers and exceptions stay editable.
+model Batch {
+  id               String @id @default(uuid())
+  name             String
+  enrollmentPrefix String
+  serialStart      Int
+  serialEnd        Int
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  members   BatchMember[]
+  offerings CourseOffering[]
+
+  @@unique([enrollmentPrefix, name])
+}
+
+/// An admin's allocation of one faculty member to teach one subject to one
+/// section for a term. Assignments hang off this, so it is the single place
+/// that answers "may this faculty publish work to these students?".
+model CourseOffering {
+  id           String  @id @default(uuid())
+  facultyId    String
+  batchId      String
+  subjectId    String
+  term         String
+  assignedById String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  faculty    User    @relation("FacultyOfferings", fields: [facultyId], references: [id], onDelete: Cascade)
+  batch      Batch   @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  subject    Subject @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  assignedBy User?   @relation("OfferingsAssignedBy", fields: [assignedById], references: [id], onDelete: SetNull)
+
+  assignments Assignment[]
+
+  @@unique([batchId, subjectId, term])
+  @@index([facultyId])
+}
+
+enum AssignmentStatus {
+  DRAFT
+  PUBLISHED
+}
+
+/// Coursework a faculty member hands to one section. Ownership is derived from
+/// `offering`, never stored again — the offering is the only authority on which
+/// faculty may touch this and which students may see it.
+model Assignment {
+  id          String @id @default(uuid())
+  offeringId  String
+  title       String
+  description String?
+
+  status AssignmentStatus @default(DRAFT)
+  /// Set when published. A future value keeps the problems locked until then.
+  publishAt DateTime?
+  dueAt     DateTime?
+  /// When false, submissions are refused once dueAt passes.
+  allowLateSubmission Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  offering CourseOffering      @relation(fields: [offeringId], references: [id], onDelete: Cascade)
+  problems AssignmentProblem[]
+
+  @@index([offeringId, status])
+}
+
+model AssignmentProblem {
+  id           String @id @default(uuid())
+  assignmentId String
+  problemId    String
+  order        Int    @default(0)
+
+  createdAt DateTime @default(now())
+
+  assignment Assignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  problem    Problem    @relation(fields: [problemId], references: [id], onDelete: Cascade)
+
+  @@unique([assignmentId, problemId])
+  @@index([problemId])
+}
+
+enum NotificationType {
+  COURSE_ASSIGNED_TO_FACULTY
+  ASSIGNMENT_PUBLISHED
+}
+
+model Notification {
+  id      String           @id @default(uuid())
+  userId  String
+  type    NotificationType
+  title   String
+  body    String?
+  linkUrl String?
+  readAt  DateTime?
+
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, readAt])
+}
+
+model BatchMember {
+  id      String @id @default(uuid())
+  batchId String
+  userId  String
+
+  createdAt DateTime @default(now())
+
+  batch Batch @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([batchId, userId])
+  @@index([userId])
 }
 
 model Problem {
@@ -104,6 +246,7 @@ model Problem {
   solvedBy          ProblemSolved[]
   problemsPlaylists ProblemInPlaylist[]
   codeSessions      CodeSession[]
+  assignedIn        AssignmentProblem[]
 }
 
 model Submission {

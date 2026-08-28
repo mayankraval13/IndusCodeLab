@@ -4,6 +4,7 @@ import toast from "react-hot-toast";
 
 export const useExecutionStore = create((set) => ({
   isExecuting: false,
+  isSubmitting: false,
   submission: null,
   runResult: null,
   runError: null,
@@ -70,6 +71,39 @@ export const useExecutionStore = create((set) => ({
       toast.error(error.response?.data?.error || "Error running code");
     } finally {
       set({ isExecuting: false });
+    }
+  },
+
+  /**
+   * Practicals are ungraded, so this records the attempt instead of judging it.
+   * Kept on its own flag so submitting never disables the Run button.
+   */
+  submitPractical: async ({ problemId, code, language, stdin }) => {
+    try {
+      set({ isSubmitting: true });
+      const res = await axiosInstance.post("/execute/submit", {
+        problemId,
+        code,
+        language,
+        stdin: stdin ?? "",
+      });
+
+      if (res.data.ran) {
+        toast.success(res.data.message);
+      } else {
+        // Saved, but there is no usable output for faculty to check.
+        toast.error(res.data.message);
+      }
+
+      return res.data;
+    } catch (error) {
+      console.log("Error submitting practical", error);
+      toast.error(
+        error.response?.data?.error || "Error submitting practical",
+      );
+      throw error;
+    } finally {
+      set({ isSubmitting: false });
     }
   },
 

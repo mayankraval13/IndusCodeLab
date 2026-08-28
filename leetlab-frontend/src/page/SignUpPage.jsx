@@ -2,17 +2,30 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Link } from "react-router-dom";
-import { Eye, EyeOff, Loader2, Lock, Mail, User } from "lucide-react";
+import { Eye, EyeOff, IdCard, Loader2, Lock, Mail, User } from "lucide-react";
 import { z } from "zod";
 import AuthImagePattern from "../components/AuthImagePattern.jsx";
 import { useAuthStore } from "../store/useAuthStore.js";
 import Logo from "../components/ui/Logo.jsx";
 
-const SignUpSchema = z.object({
-  name: z.string().min(3, "Name must be at least 3 characters"),
-  email: z.string().email("Enter a valid email"),
-  password: z.string().min(6, "Password must be at least 6 characters"),
-});
+const SignUpSchema = z
+  .object({
+    name: z.string().min(3, "Name must be at least 3 characters"),
+    enrollmentNo: z
+      .string()
+      .trim()
+      .min(6, "Enter your college enrollment number"),
+    email: z.string().email("Enter a valid email"),
+    password: z.string().min(8, "Password must be at least 8 characters"),
+  })
+  .refine(
+    (data) =>
+      data.password.toUpperCase() !== data.enrollmentNo.toUpperCase(),
+    {
+      path: ["password"],
+      message: "Password cannot be the same as your enrollment number",
+    }
+  );
 
 export default function SignUpPage() {
   const [showPassword, setShowPassword] = useState(false);
@@ -47,16 +60,36 @@ export default function SignUpPage() {
               </div>
             </Field>
 
-            <Field label="Email" error={errors.email?.message}>
+            <Field
+              label="Enrollment number"
+              error={errors.enrollmentNo?.message}
+            >
+              <div className="relative">
+                <IdCard className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-ll-muted pointer-events-none" />
+                <input
+                  type="text"
+                  autoCapitalize="characters"
+                  spellCheck={false}
+                  {...register("enrollmentNo")}
+                  className="ll-input w-full py-2.5 pl-11 pr-3.5 uppercase"
+                  placeholder="IU2341230001"
+                />
+              </div>
+            </Field>
+
+            <Field label="College email" error={errors.email?.message}>
               <div className="relative">
                 <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-ll-muted pointer-events-none" />
                 <input
                   type="email"
                   {...register("email")}
                   className="ll-input w-full py-2.5 pl-11 pr-3.5"
-                  placeholder="you@example.com"
+                  placeholder="you@iite.indusuni.ac.in"
                 />
               </div>
+              <p className="text-xs text-ll-muted mt-1.5">
+                Personal email addresses cannot be used to sign up.
+              </p>
             </Field>
 
             <Field label="Password" error={errors.password?.message}>
@@ -64,9 +97,10 @@ export default function SignUpPage() {
                 <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-ll-muted pointer-events-none" />
                 <input
                   type={showPassword ? "text" : "password"}
+                  autoComplete="new-password"
                   {...register("password")}
                   className="ll-input w-full py-2.5 pl-11 pr-11"
-                  placeholder="At least 6 characters"
+                  placeholder="At least 8 characters"
                 />
                 <button
                   type="button"

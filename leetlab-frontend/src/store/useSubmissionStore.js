@@ -26,14 +26,12 @@ export const useSubmissionStore = create((set, get) => ({
 
   getSubmissionForProblem: async (problemId) => {
     try {
+      set({ isLoading: true });
       const res = await axiosInstance.get(
         `/submission/get-all-submissions/${problemId}`
       );
 
       set({ submission: res.data.submissions });
-
-      
-
     } catch (error) {
       console.log("Error getting submissions for problem", error);
 

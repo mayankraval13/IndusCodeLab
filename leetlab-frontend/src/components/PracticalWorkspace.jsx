@@ -1,6 +1,12 @@
 import { useMemo, useState } from "react";
 import Editor from "@monaco-editor/react";
-import { Play, Terminal, ChevronDown, ChevronRight } from "lucide-react";
+import {
+  Play,
+  Terminal,
+  ChevronDown,
+  ChevronRight,
+  Upload,
+} from "lucide-react";
 import {
   toMonacoLanguage,
   formatLanguageLabel,
@@ -106,6 +112,10 @@ export default function PracticalWorkspace({
   stdin,
   onStdinChange,
   integrityBadge,
+  /** Omit to hide the Submit button entirely (e.g. read-only previews) */
+  onSubmit,
+  isSubmitting = false,
+  hasSubmitted = false,
   /** Controlled by parent so question + workspace share the same expand animation */
   hasRun = false,
 }) {
@@ -186,6 +196,27 @@ export default function PracticalWorkspace({
                     </>
                   )}
                 </button>
+                {onSubmit && (
+                  <button
+                    type="button"
+                    onClick={onSubmit}
+                    disabled={isSubmitting}
+                    className="ll-btn-primary flex items-center gap-1.5 !py-1.5 !px-3 text-xs disabled:opacity-60 disabled:cursor-not-allowed"
+                    title="Save this code and its output for your faculty"
+                  >
+                    {isSubmitting ? (
+                      <>
+                        <span className="loading loading-spinner loading-xs" />
+                        Submitting
+                      </>
+                    ) : (
+                      <>
+                        <Upload className="w-3.5 h-3.5" />
+                        {hasSubmitted ? "Resubmit" : "Submit"}
+                      </>
+                    )}
+                  </button>
+                )}
               </div>
             </div>
 

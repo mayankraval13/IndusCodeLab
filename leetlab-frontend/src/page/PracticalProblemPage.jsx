@@ -9,8 +9,12 @@ import {
 } from "../lib/lang.js";
 import toast from "react-hot-toast";
 import { useExecutionStore } from "../store/useExecutionStore.js";
+import { useSubmissionStore } from "../store/useSubmissionStore.js";
 import { useEditorIntegrity } from "../hooks/useEditorIntegrity.js";
 import PracticalWorkspace from "../components/PracticalWorkspace.jsx";
+import PracticalSubmissionHistory, {
+  SubmissionHistoryHeading,
+} from "../components/PracticalSubmissionHistory.jsx";
 import Logo from "../components/ui/Logo.jsx";
 import DifficultyBadge from "../components/ui/DifficultyBadge.jsx";
 import PageLoader from "../components/ui/PageLoader.jsx";
@@ -24,8 +28,20 @@ export default function PracticalProblemPage() {
   const { id, subjectId, unitId } = useParams();
   const navigate = useNavigate();
   const { getProblemById, problem, isProblemLoading } = useProblemStore();
-  const { runCode, runResult, runError, isExecuting, clearRunResult } =
-    useExecutionStore();
+  const {
+    runCode,
+    runResult,
+    runError,
+    isExecuting,
+    clearRunResult,
+    submitPractical,
+    isSubmitting,
+  } = useExecutionStore();
+  const {
+    submission: pastSubmissions,
+    isLoading: isSubmissionsLoading,
+    getSubmissionForProblem,
+  } = useSubmissionStore();
 
   const [code, setCode] = useState("");
   const [selectedLanguage, setSelectedLanguage] = useState("PYTHON");
@@ -40,6 +56,12 @@ export default function PracticalProblemPage() {
     problemType: integrityType,
   });
 
+  // The store seeds this as null and shares it across problems, so normalise
+  // to an array and ignore anything left over from a previous problem.
+  const submissions = Array.isArray(pastSubmissions)
+    ? pastSubmissions.filter((s) => s.problemId === id)
+    : [];
+
   const backTo =
     subjectId && unitId
       ? `/practicals/${subjectId}/units/${unitId}`
@@ -47,9 +69,10 @@ export default function PracticalProblemPage() {
 
   useEffect(() => {
     getProblemById(id);
+    getSubmissionForProblem(id);
     clearRunResult();
     setHasRun(false);
-  }, [id, getProblemById, clearRunResult]);
+  }, [id, getProblemById, getSubmissionForProblem, clearRunResult]);
 
   useEffect(() => {
     if (!problem) return;
@@ -85,6 +108,25 @@ export default function PracticalProblemPage() {
       language: selectedLanguage,
       stdin,
     });
+  };
+
+  /** Records the attempt; the server re-runs the code to capture real output. */
+  const handleSubmit = async () => {
+    if (!getLanguageId(selectedLanguage)) {
+      toast.error("Unsupported language");
+      return;
+    }
+    try {
+      await submitPractical({
+        problemId: id,
+        code,
+        language: selectedLanguage,
+        stdin,
+      });
+      await getSubmissionForProblem(id);
+    } catch {
+      // submitPractical already surfaced the reason
+    }
   };
 
   if (isProblemLoading || !problem) {
@@ -164,7 +206,18 @@ export default function PracticalProblemPage() {
             onStdinChange={setStdin}
             integrityBadge={badgeText}
             hasRun={hasRun}
+            onSubmit={handleSubmit}
+            isSubmitting={isSubmitting}
+            hasSubmitted={submissions.length > 0}
           />
+
+          <div className="mt-10 max-w-3xl">
+            <SubmissionHistoryHeading count={submissions.length} />
+            <PracticalSubmissionHistory
+              submissions={submissions}
+              isLoading={isSubmissionsLoading}
+            />
+          </div>
         </div>
       </main>
     </div>
