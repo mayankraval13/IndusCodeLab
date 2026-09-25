@@ -15,10 +15,28 @@ export const useAdminStore = create((set) => ({
   offerings: [],
   /** Result of the last dry run, held until it is applied or dismissed. */
   enrollPreview: null,
+  students: [],
+  studentsMeta: { total: 0, page: 1, totalPages: 1 },
   isLoading: false,
   isSaving: false,
   isPreviewing: false,
   error: null,
+
+  reset: () =>
+    set({
+      overview: null,
+      batches: [],
+      batchDetail: null,
+      faculty: [],
+      offerings: [],
+      students: [],
+      studentsMeta: { total: 0, page: 1, totalPages: 1 },
+      enrollPreview: null,
+      isLoading: false,
+      isSaving: false,
+      isPreviewing: false,
+      error: null,
+    }),
 
   fetchOverview: async () => {
     try {
@@ -66,7 +84,11 @@ export const useAdminStore = create((set) => ({
     try {
       set({ isSaving: true, error: null });
       const res = await axiosInstance.post("/admin/batches", data);
-      const batch = { ...res.data.batch, memberCount: 0 };
+      const batch = {
+        ...res.data.batch,
+        memberCount: 0,
+        offeringCount: 0,
+      };
       set((state) => ({ batches: [...state.batches, batch] }));
       toast.success("Section created");
       return batch;
@@ -152,6 +174,7 @@ export const useAdminStore = create((set) => ({
       // 409 means the student is in another section and needs move: true
       const message = getErrorMessage(error, "Failed to enroll student");
       set({ error: message });
+      if (error.response?.status !== 409) toast.error(message);
       throw error;
     } finally {
       set({ isSaving: false });
@@ -176,7 +199,7 @@ export const useAdminStore = create((set) => ({
   fetchFaculty: async () => {
     try {
       set({ isLoading: true, error: null });
-      const res = await axiosInstance.get("/admin/users?role=FACULTY&limit=100");
+      const res = await axiosInstance.get("/admin/users?role=FACULTY&limit=500");
       set({ faculty: res.data.users ?? [] });
     } catch (error) {
       const message = getErrorMessage(error, "Failed to fetch faculty");
@@ -196,6 +219,58 @@ export const useAdminStore = create((set) => ({
       return res.data;
     } catch (error) {
       const message = getErrorMessage(error, "Failed to create faculty");
+      set({ error: message });
+      toast.error(message);
+      throw error;
+    } finally {
+      set({ isSaving: false });
+    }
+  },
+
+  createSectionStudent: async (batchId, data) => {
+    try {
+      set({ isSaving: true, error: null });
+      const res = await axiosInstance.post(
+        `/admin/batches/${batchId}/students`,
+        data,
+      );
+      toast.success("Student account created");
+      return res.data;
+    } catch (error) {
+      const message = getErrorMessage(error, "Failed to create student");
+      set({ error: message });
+      toast.error(message);
+      throw error;
+    } finally {
+      set({ isSaving: false });
+    }
+  },
+
+  importStudents: async ({ csv, batchId }) => {
+    try {
+      set({ isSaving: true, error: null });
+      const res = await axiosInstance.post("/admin/users/students/import", {
+        csv,
+        batchId,
+      });
+      const createdCount = res.data.createdCount ?? 0;
+      const skippedCount = res.data.skippedCount ?? 0;
+      if (createdCount > 0) {
+        toast.success(
+          `Created ${createdCount} student account${createdCount === 1 ? "" : "s"}`,
+        );
+      }
+      if (skippedCount > 0) {
+        toast(
+          `${skippedCount} row${skippedCount === 1 ? "" : "s"} skipped`,
+        );
+      }
+      if (createdCount === 0 && skippedCount === 0) {
+        toast.error("No students were imported");
+      }
+      return res.data;
+    } catch (error) {
+      const message = getErrorMessage(error, "Failed to import students");
       set({ error: message });
       toast.error(message);
       throw error;
@@ -245,6 +320,52 @@ export const useAdminStore = create((set) => ({
       toast.success("Allocation removed");
     } catch (error) {
       const message = getErrorMessage(error, "Failed to remove allocation");
+      set({ error: message });
+      toast.error(message);
+      throw error;
+    } finally {
+      set({ isSaving: false });
+    }
+  },
+
+  searchStudents: async (q) => {
+    const res = await axiosInstance.get("/admin/users", {
+      params: { role: "USER", q, limit: 8 },
+    });
+    return res.data.users ?? [];
+  },
+
+  fetchStudents: async (query = {}) => {
+    try {
+      set({ isLoading: true, error: null });
+      const res = await axiosInstance.get("/admin/users", {
+        params: { role: "USER", limit: 25, ...query },
+      });
+      set({
+        students: res.data.users ?? [],
+        studentsMeta: {
+          total: res.data.total ?? 0,
+          page: res.data.page ?? 1,
+          totalPages: res.data.totalPages ?? 1,
+        },
+      });
+    } catch (error) {
+      const message = getErrorMessage(error, "Failed to fetch students");
+      set({ error: message });
+      toast.error(message);
+    } finally {
+      set({ isLoading: false });
+    }
+  },
+
+  resetUserPassword: async (id) => {
+    try {
+      set({ isSaving: true, error: null });
+      const res = await axiosInstance.post(`/admin/users/${id}/reset-password`);
+      toast.success("Temporary password issued");
+      return res.data;
+    } catch (error) {
+      const message = getErrorMessage(error, "Failed to reset password");
       set({ error: message });
       toast.error(message);
       throw error;

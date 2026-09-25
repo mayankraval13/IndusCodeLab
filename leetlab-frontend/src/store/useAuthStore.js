@@ -2,6 +2,10 @@ import { create } from "zustand";
 import { axiosInstance, setPasswordChangeRequiredHandler } from "../lib/axios";
 import toast from "react-hot-toast";
 import { useNotificationStore } from "./useNotificationStore.js";
+import { useDashboardStore } from "./useDashboardStore.js";
+import { useAdminStore } from "./useAdminStore.js";
+import { useFacultyStore } from "./useFacultyStore.js";
+import { useAssignmentStore } from "./useAssignmentStore.js";
 
 const errorMessage = (error, fallback) =>
   error.response?.data?.error ?? error.response?.data?.message ?? fallback;
@@ -89,6 +93,10 @@ export const useAuthStore = create((set) => ({
       set({ authUser: null, passwordChangeRequired: false });
       // Otherwise the next account to sign in inherits this user's bell state.
       useNotificationStore.getState().reset();
+      useDashboardStore.getState().reset();
+      useAdminStore.getState().reset();
+      useFacultyStore.getState().reset();
+      useAssignmentStore.getState().reset();
 
       toast.success("Logout successful");
     } catch (error) {

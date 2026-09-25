@@ -1,8 +1,11 @@
 import express from "express";
 import {
   createFaculty,
+  createSectionStudent,
   getAdminOverview,
+  importStudents,
   listUsers,
+  resetUserPassword,
   updateUserRole,
 } from "../controllers/admin.controller.js";
 import {
@@ -32,6 +35,8 @@ adminRoutes.get("/overview", getAdminOverview);
 
 adminRoutes.get("/users", listUsers);
 adminRoutes.post("/users/faculty", createFaculty);
+adminRoutes.post("/users/students/import", importStudents);
+adminRoutes.post("/users/:id/reset-password", resetUserPassword);
 adminRoutes.patch("/users/:id/role", updateUserRole);
 
 adminRoutes.get("/batches", getAllBatches);
@@ -41,6 +46,7 @@ adminRoutes.patch("/batches/:id", updateBatch);
 adminRoutes.delete("/batches/:id", deleteBatch);
 
 adminRoutes.post("/batches/:id/enroll-range", enrollByRange);
+adminRoutes.post("/batches/:id/students", createSectionStudent);
 adminRoutes.post("/batches/:id/members", addBatchMember);
 adminRoutes.delete("/batches/:id/members/:userId", removeBatchMember);
 

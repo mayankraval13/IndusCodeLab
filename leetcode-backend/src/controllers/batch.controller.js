@@ -89,7 +89,7 @@ export const getAllBatches = async (req, res) => {
   try {
     const batches = await db.batch.findMany({
       include: {
-        _count: { select: { members: true } },
+        _count: { select: { members: true, offerings: true } },
       },
       orderBy: [{ enrollmentPrefix: "asc" }, { name: "asc" }],
     });
@@ -100,6 +100,7 @@ export const getAllBatches = async (req, res) => {
       batches: batches.map(({ _count, ...batch }) => ({
         ...batch,
         memberCount: _count.members,
+        offeringCount: _count.offerings,
       })),
     });
   } catch (error) {
@@ -271,11 +272,6 @@ export const enrollByRange = async (req, res) => {
       where: {
         role: UserRole.USER,
         enrollmentNo: { startsWith: batch.enrollmentPrefix },
-        // Bulk enrollment trusts the enrollment number alone, so it must only
-        // ever sweep up accounts the institution created. A self-registered
-        // account claiming an unissued number is deliberately skipped; an admin
-        // can still add it by hand, where they see who it actually is.
-        provisionedByAdmin: true,
       },
       select: {
         ...STUDENT_FIELDS,
@@ -302,8 +298,16 @@ export const enrollByRange = async (req, res) => {
     const alreadyMembers = [];
     const conflicts = [];
     const toEnroll = [];
+    // Self-registered accounts are listed, not swept in. An admin adds them
+    // one at a time after seeing who the account actually is.
+    const skipped = [];
 
     for (const user of matched) {
+      if (!user.provisionedByAdmin) {
+        skipped.push(shapeStudent(user));
+        continue;
+      }
+
       const memberships = user.batches.map((entry) => entry.batch);
 
       if (memberships.some((b) => b.id === batch.id)) {
@@ -355,11 +359,13 @@ export const enrollByRange = async (req, res) => {
         alreadyMembers: alreadyMembers.length,
         conflicts: conflicts.length,
         toEnroll: toEnroll.length,
+        skipped: skipped.length,
         enrolled,
       },
       alreadyMembers,
       conflicts,
       toEnroll,
+      skipped,
     });
   } catch (error) {
     console.error("Error enrolling by range:", error);

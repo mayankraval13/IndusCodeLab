@@ -15,6 +15,18 @@ export const useFacultyStore = create((set) => ({
   isSaving: false,
   error: null,
 
+  reset: () =>
+    set({
+      offerings: [],
+      assignments: [],
+      assignment: null,
+      assignableProblems: [],
+      roster: null,
+      isLoading: false,
+      isSaving: false,
+      error: null,
+    }),
+
   /** Server scopes this to the signed-in faculty member; no id is sent. */
   fetchMyOfferings: async () => {
     try {

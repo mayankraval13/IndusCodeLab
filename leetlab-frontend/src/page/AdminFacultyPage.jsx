@@ -2,18 +2,17 @@ import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Link } from "react-router-dom";
 import {
   Check,
   Copy,
   GraduationCap,
+  KeyRound,
   Loader2,
   Plus,
   ShieldCheck,
 } from "lucide-react";
 import { useAdminStore } from "../store/useAdminStore.js";
 import Modal from "../components/ui/Modal.jsx";
-import Logo from "../components/ui/Logo.jsx";
 import PageLoader from "../components/ui/PageLoader.jsx";
 
 const facultySchema = z.object({
@@ -29,10 +28,13 @@ export default function AdminFacultyPage() {
     fetchFaculty,
     createFaculty,
     updateUserRole,
+    resetUserPassword,
   } = useAdminStore();
 
   const [credentials, setCredentials] = useState(null);
   const [copied, setCopied] = useState(false);
+  const [promoteTarget, setPromoteTarget] = useState(null);
+  const [resetTarget, setResetTarget] = useState(null);
 
   useEffect(() => {
     fetchFaculty();
@@ -49,19 +51,43 @@ export default function AdminFacultyPage() {
   });
 
   const onCreate = async (data) => {
-    const result = await createFaculty(data);
-    reset();
-    setCopied(false);
-    setCredentials({
-      email: result.faculty.email,
-      name: result.faculty.name,
-      temporaryPassword: result.temporaryPassword,
-    });
+    try {
+      const result = await createFaculty(data);
+      reset();
+      setCopied(false);
+      setCredentials({
+        email: result.faculty.email,
+        name: result.faculty.name,
+        temporaryPassword: result.temporaryPassword,
+      });
+    } catch {
+      // The store already surfaces the error.
+    }
   };
 
-  const onPromote = async (user) => {
-    await updateUserRole(user.id, "ADMIN");
-    await fetchFaculty();
+  const onPromote = async () => {
+    try {
+      await updateUserRole(promoteTarget.id, "ADMIN");
+      setPromoteTarget(null);
+      await fetchFaculty();
+    } catch {
+      // The store already surfaces the error.
+    }
+  };
+
+  const onResetPassword = async () => {
+    try {
+      const result = await resetUserPassword(resetTarget.id);
+      setResetTarget(null);
+      setCopied(false);
+      setCredentials({
+        email: result.user.email,
+        name: result.user.name,
+        temporaryPassword: result.temporaryPassword,
+      });
+    } catch {
+      // The store already surfaces the error.
+    }
   };
 
   const copyCredentials = async () => {
@@ -76,17 +102,8 @@ export default function AdminFacultyPage() {
   }
 
   return (
-    <div className="min-h-screen bg-ll-bg">
-      <div className="border-b border-ll-border bg-ll-surface/95">
-        <div className="max-w-[1000px] mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
-          <Logo size="sm" />
-          <Link to="/" className="text-sm text-ll-muted hover:text-ll-text">
-            ← Back to home
-          </Link>
-        </div>
-      </div>
-
-      <div className="max-w-[1000px] mx-auto px-4 sm:px-6 py-8 space-y-8">
+    <>
+    <div className="max-w-[1000px] mx-auto px-4 sm:px-6 py-8 space-y-8">
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2">
             <GraduationCap className="w-6 h-6 text-ll-accent" />
@@ -179,12 +196,21 @@ export default function AdminFacultyPage() {
                   <button
                     type="button"
                     disabled={isSaving}
-                    onClick={() => onPromote(member)}
+                    onClick={() => setPromoteTarget(member)}
                     className="ll-btn-ghost text-sm flex items-center gap-1.5 whitespace-nowrap"
                     title="Promote to admin"
                   >
                     <ShieldCheck className="w-3.5 h-3.5" />
                     Make admin
+                  </button>
+                  <button
+                    type="button"
+                    disabled={isSaving}
+                    onClick={() => setResetTarget(member)}
+                    className="ll-btn-ghost text-sm flex items-center gap-1.5 whitespace-nowrap"
+                  >
+                    <KeyRound className="w-3.5 h-3.5" />
+                    Reset password
                   </button>
                 </li>
               ))}
@@ -241,6 +267,68 @@ export default function AdminFacultyPage() {
           </button>
         </div>
       </Modal>
-    </div>
+
+      <Modal
+        isOpen={!!promoteTarget}
+        onClose={() => !isSaving && setPromoteTarget(null)}
+        title="Promote to admin?"
+      >
+        <p className="text-sm text-ll-muted mb-4">
+          <span className="text-ll-text font-medium">{promoteTarget?.name}</span>{" "}
+          will be able to create accounts, sections, and allocations. This
+          cannot be undone from this page.
+        </p>
+        <div className="flex justify-end gap-2">
+          <button
+            type="button"
+            className="ll-btn-ghost"
+            onClick={() => setPromoteTarget(null)}
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            className="ll-btn-primary"
+            disabled={isSaving}
+            onClick={onPromote}
+          >
+            {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : "Make admin"}
+          </button>
+        </div>
+      </Modal>
+
+      <Modal
+        isOpen={!!resetTarget}
+        onClose={() => !isSaving && setResetTarget(null)}
+        title="Reset password?"
+      >
+        <p className="text-sm text-ll-muted mb-4">
+          <span className="text-ll-text font-medium">{resetTarget?.name}</span>{" "}
+          will have to set a new password the next time they sign in. Their
+          current password stops working immediately.
+        </p>
+        <div className="flex justify-end gap-2">
+          <button
+            type="button"
+            className="ll-btn-ghost"
+            onClick={() => setResetTarget(null)}
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            className="ll-btn-primary"
+            disabled={isSaving}
+            onClick={onResetPassword}
+          >
+            {isSaving ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              "Issue password"
+            )}
+          </button>
+        </div>
+      </Modal>
+    </>
   );
 }

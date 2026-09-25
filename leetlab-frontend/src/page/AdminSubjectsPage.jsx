@@ -12,8 +12,6 @@ import {
 } from "lucide-react";
 import { useSubjectStore } from "../store/useSubjectStore.js";
 import Modal from "../components/ui/Modal.jsx";
-import Logo from "../components/ui/Logo.jsx";
-import { Link } from "react-router-dom";
 import PageLoader from "../components/ui/PageLoader.jsx";
 
 const subjectSchema = z.object({
@@ -130,17 +128,8 @@ export default function AdminSubjectsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-ll-bg">
-      <div className="border-b border-ll-border bg-ll-surface/95">
-        <div className="max-w-[1000px] mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
-          <Logo size="sm" />
-          <Link to="/" className="text-sm text-ll-muted hover:text-ll-text">
-            ← Back to problems
-          </Link>
-        </div>
-      </div>
-
-      <div className="max-w-[1000px] mx-auto px-4 sm:px-6 py-8 space-y-8">
+    <>
+    <div className="max-w-[1000px] mx-auto px-4 sm:px-6 py-8 space-y-8">
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2">
             <BookOpen className="w-6 h-6 text-ll-accent" />
@@ -434,6 +423,6 @@ export default function AdminSubjectsPage() {
           </button>
         </div>
       </Modal>
-    </div>
+    </>
   );
 }

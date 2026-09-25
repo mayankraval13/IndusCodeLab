@@ -3,7 +3,6 @@ import { Link, useParams } from "react-router-dom";
 import { CheckCircle2, Circle, Clock, Users } from "lucide-react";
 import { useFacultyStore } from "../store/useFacultyStore.js";
 import { formatDate, formatDateTime } from "../lib/dates.js";
-import Logo from "../components/ui/Logo.jsx";
 import PageLoader from "../components/ui/PageLoader.jsx";
 
 function Stat({ label, value, tone = "text-ll-text" }) {
@@ -30,21 +29,14 @@ export default function FacultyAssignmentPage() {
   const { assignment, roster: rows, summary, problemCount } = roster;
 
   return (
-    <div className="min-h-screen bg-ll-bg">
-      <div className="border-b border-ll-border bg-ll-surface/95">
-        <div className="max-w-[1100px] mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
-          <Logo size="sm" />
-          <Link
-            to={`/faculty/offerings/${assignment.offeringId}`}
-            className="text-sm text-ll-muted hover:text-ll-text"
-          >
-            ← Back to section
-          </Link>
-        </div>
-      </div>
-
-      <div className="max-w-[1100px] mx-auto px-4 sm:px-6 py-8 space-y-6">
-        <div>
+    <div className="max-w-[1100px] mx-auto px-4 sm:px-6 py-8 space-y-6">
+      <Link
+        to={`/faculty/offerings/${assignment.offeringId}`}
+        className="text-sm text-ll-muted hover:text-ll-text"
+      >
+        ← Back to section
+      </Link>
+      <div>
           <h1 className="text-2xl font-bold">{assignment.title}</h1>
           <p className="text-ll-muted text-sm mt-1 flex flex-wrap items-center gap-x-4 gap-y-1">
             <span className="flex items-center gap-1.5">
@@ -135,6 +127,5 @@ export default function FacultyAssignmentPage() {
           )}
         </div>
       </div>
-    </div>
   );
 }

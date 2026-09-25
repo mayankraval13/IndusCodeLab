@@ -50,8 +50,9 @@ export default function ChangePasswordPage() {
 
           <h1 className="text-xl font-semibold">Set a new password</h1>
           <p className="text-ll-muted mt-2 text-sm leading-relaxed">
-            Your account was created with a temporary password. Choose a new one
-            to continue.
+            {authUser?.enrollmentNo
+              ? "Choose a new password to continue. For a new student account, the current password is your enrollment number."
+              : "Your account was created with a temporary password. Choose a new one to continue."}
           </p>
 
           {authUser?.enrollmentNo && (

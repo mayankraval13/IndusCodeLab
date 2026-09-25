@@ -11,6 +11,7 @@ import {
   BookOpen,
   CheckCircle2,
   Download,
+  Loader2,
 } from "lucide-react";
 import Editor from "@monaco-editor/react";
 import {axiosInstance} from "../lib/axios.js"
@@ -520,6 +521,7 @@ public class Main {
 const CreateProblemForm = () => {
 
     const [sampleType, setSampleType] = useState("DP");
+    const [codeLang, setCodeLang] = useState("PYTHON");
     const { subjects, fetchSubjects } = useSubjectStore();
 
     const navigation = useNavigate();
@@ -551,6 +553,7 @@ const CreateProblemForm = () => {
     });
 
     const selectedSubjectId = watch("subjectId");
+    const problemType = watch("type");
 
     useEffect(() => {
       fetchSubjects();
@@ -598,6 +601,10 @@ const CreateProblemForm = () => {
             ...rest,
             unitId: data.unitId || undefined,
             type: data.type || "PRACTICE",
+            // Practicals are checked in the lab, not against hidden tests.
+            ...(data.type === "PRACTICAL"
+              ? { executionMode: "JUDGE0_RUN" }
+              : {}),
           };
           const res = await axiosInstance.post("/problems/create-problem", payload)
           console.log(res);
@@ -640,26 +647,37 @@ const CreateProblemForm = () => {
         />
         <div className="p-6 md:p-8">
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 md:mb-8 pb-4 border-b border-ll-border">
-            <h2 className="text-xl md:text-2xl font-bold flex items-center gap-3">
-              <FileText className="w-6 h-6 text-ll-accent" />
-              Problem details
-            </h2>
+            <div>
+              <h2 className="text-xl font-bold flex items-center gap-3">
+                <FileText className="w-5 h-5 text-ll-accent" />
+                Problem details
+              </h2>
+              <p className="text-sm text-ll-muted mt-1 max-w-xl">
+                {problemType === "PRACTICAL"
+                  ? "Practicals are run in the lab. The reference solution is stored, not graded."
+                  : "Practice problems are checked against the test cases you enter."}
+              </p>
+            </div>
 
             <div className="flex flex-col md:flex-row gap-3 mt-4 md:mt-0">
               <div className="join">
                 <button
                   type="button"
-                  className={`btn join-item ${
-                    sampleType === "DP" ? "btn-active" : ""
+                  className={`px-3 py-1.5 text-sm rounded-lg border ${
+                    sampleType === "DP"
+                      ? "border-ll-accent text-ll-text bg-ll-accent/10"
+                      : "border-ll-border text-ll-muted"
                   }`}
-                  onClick={() => setSampleType("array")}
+                  onClick={() => setSampleType("DP")}
                 >
                   DP Problem
                 </button>
                 <button
                   type="button"
-                  className={`btn join-item ${
-                    sampleType === "string" ? "btn-active" : ""
+                  className={`px-3 py-1.5 text-sm rounded-lg border ${
+                    sampleType === "string"
+                      ? "border-ll-accent text-ll-text bg-ll-accent/10"
+                      : "border-ll-border text-ll-muted"
                   }`}
                   onClick={() => setSampleType("string")}
                 >
@@ -668,7 +686,7 @@ const CreateProblemForm = () => {
               </div>
               <button
                 type="button"
-                className="btn btn-secondary gap-2"
+                className="ll-btn-ghost border border-ll-border flex items-center gap-2"
                 onClick={loadSampleData}
               >
                 <Download className="w-4 h-4" />
@@ -688,7 +706,7 @@ const CreateProblemForm = () => {
                 </label>
                 <input
                   type="text"
-                  className="input input-bordered w-full text-base md:text-lg"
+                  className="ll-input w-full"
                   {...register("title")}
                   placeholder="Enter problem title"
                 />
@@ -708,7 +726,7 @@ const CreateProblemForm = () => {
                   </span>
                 </label>
                 <textarea
-                  className="textarea textarea-bordered min-h-32 w-full text-base md:text-lg p-4 resize-y"
+                  className="ll-input w-full min-h-32 resize-y"
                   {...register("description")}
                   placeholder="Enter problem description"
                 />
@@ -728,7 +746,7 @@ const CreateProblemForm = () => {
                   </span>
                 </label>
                 <select
-                  className="select select-bordered w-full text-base md:text-lg"
+                  className="ll-input w-full"
                   {...register("difficulty")}
                 >
                   <option value="EASY">Easy</option>
@@ -751,7 +769,7 @@ const CreateProblemForm = () => {
                   </span>
                 </label>
                 <select
-                  className="select select-bordered w-full text-base md:text-lg"
+                  className="ll-input w-full"
                   {...register("type")}
                 >
                   <option value="PRACTICE">Practice</option>
@@ -774,7 +792,7 @@ const CreateProblemForm = () => {
                   </span>
                 </label>
                 <select
-                  className="select select-bordered w-full text-base md:text-lg"
+                  className="ll-input w-full"
                   {...register("subjectId")}
                 >
                   <option value="">No subject</option>
@@ -793,7 +811,7 @@ const CreateProblemForm = () => {
                   </span>
                 </label>
                 <select
-                  className="select select-bordered w-full text-base md:text-lg"
+                  className="ll-input w-full"
                   {...register("unitId")}
                   disabled={!selectedSubjectId}
                 >
@@ -809,7 +827,7 @@ const CreateProblemForm = () => {
               </div>
             </div>
             {/* Tags */}
-            <div className="card bg-base-200 p-4 md:p-6 shadow-md">
+            <div className="rounded-xl border border-ll-border bg-ll-bg/40 p-4 md:p-5">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg md:text-xl font-semibold flex items-center gap-2">
                   <BookOpen className="w-5 h-5" />
@@ -817,7 +835,7 @@ const CreateProblemForm = () => {
                 </h3>
                 <button
                   type="button"
-                  className="btn btn-primary btn-sm"
+                  className="ll-btn-primary text-xs py-1.5 inline-flex items-center gap-1"
                   onClick={() => appendTag("")}
                 >
                   <Plus className="w-4 h-4 mr-1" /> Add Tag
@@ -828,13 +846,13 @@ const CreateProblemForm = () => {
                   <div key={field.id} className="flex gap-2 items-center">
                     <input
                       type="text"
-                      className="input input-bordered flex-1"
+                      className="ll-input flex-1"
                       {...register(`tags.${index}`)}
                       placeholder="Enter tag"
                     />
                     <button
                       type="button"
-                      className="btn btn-ghost btn-square btn-sm"
+                      className="ll-btn-ghost p-2"
                       onClick={() => removeTag(index)}
                       disabled={tagFields.length === 1}
                     >
@@ -853,7 +871,7 @@ const CreateProblemForm = () => {
             </div>
 
             {/* Test Cases */}
-            <div className="card bg-base-200 p-4 md:p-6 shadow-md">
+            <div className="rounded-xl border border-ll-border bg-ll-bg/40 p-4 md:p-5">
               <div className="flex items-center justify-between mb-6">
                 <h3 className="text-lg md:text-xl font-semibold flex items-center gap-2">
                   <CheckCircle2 className="w-5 h-5" />
@@ -861,7 +879,7 @@ const CreateProblemForm = () => {
                 </h3>
                 <button
                   type="button"
-                  className="btn btn-primary btn-sm"
+                  className="ll-btn-primary text-xs py-1.5 inline-flex items-center gap-1"
                   onClick={() => appendTestCase({ input: "", output: "" })}
                 >
                   <Plus className="w-4 h-4 mr-1" /> Add Test Case
@@ -869,7 +887,7 @@ const CreateProblemForm = () => {
               </div>
               <div className="space-y-6">
                 {testCaseFields.map((field, index) => (
-                  <div key={field.id} className="card bg-base-100 shadow-md">
+                  <div key={field.id} className="rounded-lg border border-ll-border bg-ll-surface">
                     <div className="card-body p-4 md:p-6">
                       <div className="flex justify-between items-center mb-4">
                         <h4 className="text-base md:text-lg font-semibold">
@@ -892,7 +910,7 @@ const CreateProblemForm = () => {
                             </span>
                           </label>
                           <textarea
-                            className="textarea textarea-bordered min-h-24 w-full p-3 resize-y"
+                            className="ll-input w-full min-h-24 resize-y"
                             {...register(`testCases.${index}.input`)}
                             placeholder="Enter test case input"
                           />
@@ -911,7 +929,7 @@ const CreateProblemForm = () => {
                             </span>
                           </label>
                           <textarea
-                            className="textarea textarea-bordered min-h-24 w-full p-3 resize-y"
+                            className="ll-input w-full min-h-24 resize-y"
                             {...register(`testCases.${index}.output`)}
                             placeholder="Enter expected output"
                           />
@@ -938,20 +956,40 @@ const CreateProblemForm = () => {
             </div>
 
             {/* Code Editor Sections */}
-            <div className="space-y-8">
+            <div className="rounded-xl border border-ll-border bg-ll-bg/40 p-4 md:p-5">
+              <div className="flex flex-wrap items-center justify-between gap-3 mb-5">
+                <h3 className="text-lg font-semibold flex items-center gap-2">
+                  <Code2 className="w-5 h-5" />
+                  Languages
+                </h3>
+                <div className="flex gap-1 rounded-lg border border-ll-border p-1">
+                  {["PYTHON", "JAVASCRIPT", "JAVA"].map((language) => (
+                    <button
+                      key={language}
+                      type="button"
+                      onClick={() => setCodeLang(language)}
+                      className={`px-3 py-1.5 rounded-md text-sm ${
+                        codeLang === language
+                          ? "bg-ll-surface-2 text-ll-text"
+                          : "text-ll-muted hover:text-ll-text"
+                      }`}
+                    >
+                      {language === "JAVASCRIPT"
+                        ? "JavaScript"
+                        : language === "PYTHON"
+                          ? "Python"
+                          : "Java"}
+                    </button>
+                  ))}
+                </div>
+              </div>
               {["JAVASCRIPT", "PYTHON", "JAVA"].map((language) => (
                 <div
                   key={language}
-                  className="card bg-base-200 p-4 md:p-6 shadow-md"
+                  className={codeLang === language ? "space-y-5" : "hidden"}
                 >
-                  <h3 className="text-lg md:text-xl font-semibold mb-6 flex items-center gap-2">
-                    <Code2 className="w-5 h-5" />
-                    {language}
-                  </h3>
-
-                  <div className="space-y-6">
                     {/* Starter Code */}
-                    <div className="card bg-base-100 shadow-md">
+                    <div className="rounded-lg border border-ll-border bg-ll-surface">
                       <div className="card-body p-4 md:p-6">
                         <h4 className="font-semibold text-base md:text-lg mb-4">
                           Starter Code Template
@@ -990,7 +1028,7 @@ const CreateProblemForm = () => {
                     </div>
 
                     {/* Reference Solution */}
-                    <div className="card bg-base-100 shadow-md">
+                    <div className="rounded-lg border border-ll-border bg-ll-surface">
                       <div className="card-body p-4 md:p-6">
                         <h4 className="font-semibold text-base md:text-lg mb-4 flex items-center gap-2">
                           <CheckCircle2 className="w-5 h-5 text-success" />
@@ -1030,7 +1068,7 @@ const CreateProblemForm = () => {
                     </div>
 
                     {/* Examples */}
-                    <div className="card bg-base-100 shadow-md">
+                    <div className="rounded-lg border border-ll-border bg-ll-surface">
                       <div className="card-body p-4 md:p-6">
                         <h4 className="font-semibold text-base md:text-lg mb-4">
                           Example
@@ -1043,7 +1081,7 @@ const CreateProblemForm = () => {
                               </span>
                             </label>
                             <textarea
-                              className="textarea textarea-bordered min-h-20 w-full p-3 resize-y"
+                              className="ll-input w-full min-h-20 resize-y"
                               {...register(`examples.${language}.input`)}
                               placeholder="Example input"
                             />
@@ -1062,7 +1100,7 @@ const CreateProblemForm = () => {
                               </span>
                             </label>
                             <textarea
-                              className="textarea textarea-bordered min-h-20 w-full p-3 resize-y"
+                              className="ll-input w-full min-h-20 resize-y"
                               {...register(`examples.${language}.output`)}
                               placeholder="Example output"
                             />
@@ -1081,7 +1119,7 @@ const CreateProblemForm = () => {
                               </span>
                             </label>
                             <textarea
-                              className="textarea textarea-bordered min-h-24 w-full p-3 resize-y"
+                              className="ll-input w-full min-h-24 resize-y"
                               {...register(`examples.${language}.explanation`)}
                               placeholder="Explain the example"
                             />
@@ -1090,12 +1128,11 @@ const CreateProblemForm = () => {
                       </div>
                     </div>
                   </div>
-                </div>
               ))}
             </div>
 
             {/* Additional Information */}
-            <div className="card bg-base-200 p-4 md:p-6 shadow-md">
+            <div className="rounded-xl border border-ll-border bg-ll-bg/40 p-4 md:p-5">
               <h3 className="text-lg md:text-xl font-semibold mb-6 flex items-center gap-2">
                 <Lightbulb className="w-5 h-5 text-warning" />
                 Additional Information
@@ -1106,7 +1143,7 @@ const CreateProblemForm = () => {
                     <span className="label-text font-medium">Constraints</span>
                   </label>
                   <textarea
-                    className="textarea textarea-bordered min-h-24 w-full p-3 resize-y"
+                    className="ll-input w-full min-h-24 resize-y"
                     {...register("constraints")}
                     placeholder="Enter problem constraints"
                   />
@@ -1125,7 +1162,7 @@ const CreateProblemForm = () => {
                     </span>
                   </label>
                   <textarea
-                    className="textarea textarea-bordered min-h-24 w-full p-3 resize-y"
+                    className="ll-input w-full min-h-24 resize-y"
                     {...register("hints")}
                     placeholder="Enter hints for solving the problem"
                   />
@@ -1137,7 +1174,7 @@ const CreateProblemForm = () => {
                     </span>
                   </label>
                   <textarea
-                    className="textarea textarea-bordered min-h-32 w-full p-3 resize-y"
+                    className="ll-input w-full min-h-32 resize-y"
                     {...register("editorial")}
                     placeholder="Enter problem editorial/solution explanation"
                   />
@@ -1145,16 +1182,18 @@ const CreateProblemForm = () => {
               </div>
             </div>
 
-            <div className="card-actions justify-end pt-4 border-t">
-              <button type="submit" className="btn btn-primary btn-lg gap-2">
+            <div className="flex justify-end pt-2 border-t border-ll-border">
+              <button
+                type="submit"
+                disabled={isLoading}
+                className="ll-btn-primary inline-flex items-center gap-2"
+              >
                 {isLoading ? (
-                  <span className="loading loading-spinner text-white"></span>
+                  <Loader2 className="w-4 h-4 animate-spin" />
                 ) : (
-                  <>
-                    <CheckCircle2 className="w-5 h-5" />
-                    Create Problem
-                  </>
+                  <CheckCircle2 className="w-4 h-4" />
                 )}
+                Create problem
               </button>
             </div>
           </form>

@@ -4,7 +4,6 @@ import { BookOpen, Loader2, Network, Plus, Trash2, Users } from "lucide-react";
 import { useAdminStore } from "../store/useAdminStore.js";
 import { useSubjectStore } from "../store/useSubjectStore.js";
 import Modal from "../components/ui/Modal.jsx";
-import Logo from "../components/ui/Logo.jsx";
 import PageLoader from "../components/ui/PageLoader.jsx";
 
 /** Mirrors the backend fallback so the prefilled term matches what it would pick. */
@@ -22,7 +21,6 @@ export default function AdminAllocationsPage() {
     offerings,
     batches,
     faculty,
-    isLoading,
     isSaving,
     fetchOfferings,
     fetchBatches,
@@ -35,12 +33,21 @@ export default function AdminAllocationsPage() {
   const [form, setForm] = useState(emptyForm);
   const [term, setTerm] = useState(currentTerm);
   const [pendingDelete, setPendingDelete] = useState(null);
+  const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    fetchOfferings();
-    fetchBatches();
-    fetchFaculty();
-    fetchSubjects();
+    let cancelled = false;
+    Promise.all([
+      fetchOfferings(),
+      fetchBatches(),
+      fetchFaculty(),
+      fetchSubjects(),
+    ]).finally(() => {
+      if (!cancelled) setReady(true);
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [fetchOfferings, fetchBatches, fetchFaculty, fetchSubjects]);
 
   const terms = useMemo(() => {
@@ -76,22 +83,13 @@ export default function AdminAllocationsPage() {
   const setField = (field) => (event) =>
     setForm((previous) => ({ ...previous, [field]: event.target.value }));
 
-  if (isLoading && offerings.length === 0) {
+  if (!ready) {
     return <PageLoader message="Loading allocations..." />;
   }
 
   return (
-    <div className="min-h-screen bg-ll-bg">
-      <div className="border-b border-ll-border bg-ll-surface/95">
-        <div className="max-w-[1100px] mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
-          <Logo size="sm" />
-          <Link to="/" className="text-sm text-ll-muted hover:text-ll-text">
-            ← Back to home
-          </Link>
-        </div>
-      </div>
-
-      <div className="max-w-[1100px] mx-auto px-4 sm:px-6 py-8 space-y-8">
+    <>
+    <div className="max-w-[1100px] mx-auto px-4 sm:px-6 py-8 space-y-8">
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2">
             <Network className="w-6 h-6 text-ll-accent" />
@@ -308,8 +306,9 @@ export default function AdminAllocationsPage() {
           <span className="text-ll-text font-medium">
             {pendingDelete?.faculty?.name}
           </span>{" "}
-          will lose access to publish {pendingDelete?.subject?.name} practicals
-          for Section {pendingDelete?.batch?.name}.
+          will lose access to {pendingDelete?.subject?.name} for Section{" "}
+          {pendingDelete?.batch?.name}. Assignments already published under this
+          allocation are removed with it.
         </p>
 
         <div className="flex justify-end gap-2">
@@ -330,6 +329,6 @@ export default function AdminAllocationsPage() {
           </button>
         </div>
       </Modal>
-    </div>
+    </>
   );
 }

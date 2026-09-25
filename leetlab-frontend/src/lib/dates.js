@@ -1,11 +1,19 @@
+const dateParts = {
+  day: "numeric",
+  month: "short",
+  year: "numeric",
+};
+
 export const formatDate = (iso) =>
-  iso
-    ? new Date(iso).toLocaleDateString(undefined, {
-        day: "numeric",
-        month: "short",
-        year: "numeric",
-      })
-    : null;
+  iso ? new Date(iso).toLocaleDateString(undefined, dateParts) : null;
+
+/** YYYY-MM-DD from the server, parsed as a local calendar day (not UTC midnight). */
+export const formatDayKey = (key) => {
+  if (!key) return null;
+  const [year, month, day] = String(key).split("-").map(Number);
+  if (!year || !month || !day) return formatDate(key);
+  return new Date(year, month - 1, day).toLocaleDateString(undefined, dateParts);
+};
 
 export const formatDateTime = (iso) =>
   iso

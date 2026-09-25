@@ -17,7 +17,6 @@ import {
   relativeDeadline,
 } from "../lib/dates.js";
 import Modal from "../components/ui/Modal.jsx";
-import Logo from "../components/ui/Logo.jsx";
 import PageLoader from "../components/ui/PageLoader.jsx";
 
 const emptyDraft = {
@@ -109,21 +108,15 @@ export default function FacultyOfferingPage() {
   }
 
   return (
-    <div className="min-h-screen bg-ll-bg">
-      <div className="border-b border-ll-border bg-ll-surface/95">
-        <div className="max-w-[1100px] mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
-          <Logo size="sm" />
-          <Link
-            to="/faculty/sections"
-            className="text-sm text-ll-muted hover:text-ll-text"
-          >
-            ← All sections
-          </Link>
-        </div>
-      </div>
-
-      <div className="max-w-[1100px] mx-auto px-4 sm:px-6 py-8 space-y-8">
-        <div>
+    <>
+    <div className="max-w-[1100px] mx-auto px-4 sm:px-6 py-8 space-y-8">
+      <Link
+        to="/faculty/sections"
+        className="text-sm text-ll-muted hover:text-ll-text"
+      >
+        ← All sections
+      </Link>
+      <div>
           <h1 className="text-2xl font-bold">
             {offering?.subject?.name ?? "Practicals"}
           </h1>
@@ -429,6 +422,6 @@ export default function FacultyOfferingPage() {
           </button>
         </div>
       </Modal>
-    </div>
+    </>
   );
 }

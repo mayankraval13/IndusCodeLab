@@ -2,7 +2,6 @@ import { useEffect } from "react";
 import { Link } from "react-router-dom";
 import { BookOpen, ChevronRight, Clock, Users } from "lucide-react";
 import { useFacultyStore } from "../store/useFacultyStore.js";
-import Logo from "../components/ui/Logo.jsx";
 import PageLoader from "../components/ui/PageLoader.jsx";
 
 export default function FacultySectionsPage() {
@@ -17,17 +16,7 @@ export default function FacultySectionsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-ll-bg">
-      <div className="border-b border-ll-border bg-ll-surface/95">
-        <div className="max-w-[1000px] mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
-          <Logo size="sm" />
-          <Link to="/" className="text-sm text-ll-muted hover:text-ll-text">
-            ← Back to home
-          </Link>
-        </div>
-      </div>
-
-      <div className="max-w-[1000px] mx-auto px-4 sm:px-6 py-8 space-y-6">
+    <div className="max-w-[1000px] mx-auto px-4 sm:px-6 py-8 space-y-6">
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2">
             <Users className="w-6 h-6 text-ll-accent" />
@@ -90,6 +79,5 @@ export default function FacultySectionsPage() {
           </div>
         )}
       </div>
-    </div>
   );
 }

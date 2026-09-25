@@ -2,21 +2,20 @@ import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Link } from "react-router-dom";
 import {
   ChevronDown,
   ChevronRight,
   Loader2,
   Plus,
+  Search,
   SearchCheck,
   Trash2,
   TriangleAlert,
-  UserPlus,
+  Upload,
   Users,
 } from "lucide-react";
 import { useAdminStore } from "../store/useAdminStore.js";
 import Modal from "../components/ui/Modal.jsx";
-import Logo from "../components/ui/Logo.jsx";
 import PageLoader from "../components/ui/PageLoader.jsx";
 
 const batchSchema = z
@@ -48,6 +47,7 @@ export default function AdminBatchesPage() {
     fetchOverview,
     fetchBatches,
     fetchBatch,
+    searchStudents,
     clearBatchDetail,
     createBatch,
     deleteBatch,
@@ -56,19 +56,49 @@ export default function AdminBatchesPage() {
     enrollRange,
     addBatchMember,
     removeBatchMember,
+    createSectionStudent,
+    importStudents,
   } = useAdminStore();
 
   const [expandedId, setExpandedId] = useState(null);
   const [range, setRange] = useState({ serialStart: "", serialEnd: "" });
   const [newMember, setNewMember] = useState("");
+  const [newStudent, setNewStudent] = useState({ name: "", enrollmentNo: "" });
+  const [studentMatches, setStudentMatches] = useState([]);
+  const [pendingAdd, setPendingAdd] = useState(null);
   const [transferTarget, setTransferTarget] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleteError, setDeleteError] = useState(null);
+  const [credentials, setCredentials] = useState(null);
+  const [importResult, setImportResult] = useState(null);
 
   useEffect(() => {
     fetchBatches();
     fetchOverview();
   }, [fetchBatches, fetchOverview]);
+
+  useEffect(() => {
+    const query = newMember.trim();
+    if (!expandedId || query.length < 2) {
+      setStudentMatches([]);
+      return;
+    }
+
+    let cancelled = false;
+    const timer = setTimeout(async () => {
+      try {
+        const users = await searchStudents(query);
+        if (!cancelled) setStudentMatches(users);
+      } catch {
+        if (!cancelled) setStudentMatches([]);
+      }
+    }, 250);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [newMember, expandedId, searchStudents]);
 
   const {
     register,
@@ -101,6 +131,9 @@ export default function AdminBatchesPage() {
 
     setExpandedId(batch.id);
     setNewMember("");
+    setNewStudent({ name: "", enrollmentNo: "" });
+    setStudentMatches([]);
+    setPendingAdd(null);
     setRange({
       serialStart: String(batch.serialStart),
       serialEnd: String(batch.serialEnd),
@@ -129,24 +162,71 @@ export default function AdminBatchesPage() {
     await refresh(expandedId);
   };
 
-  const onAddMember = async (move = false) => {
-    const enrollmentNo = newMember.trim();
-    if (!enrollmentNo) return;
+  const onAddMember = async (move = false, target = pendingAdd) => {
+    const enrollmentNo = (target?.enrollmentNo ?? newMember).trim();
+    const userId = target?.userId;
+    if (!enrollmentNo && !userId) return;
 
     try {
-      await addBatchMember(expandedId, { enrollmentNo, move });
+      await addBatchMember(expandedId, {
+        ...(userId ? { userId } : { enrollmentNo }),
+        move,
+      });
       setNewMember("");
+      setStudentMatches([]);
+      setPendingAdd(null);
       setTransferTarget(null);
       await refresh(expandedId);
+      if (enrollPreview) {
+        await previewEnrollRange(expandedId, {
+          serialStart: Number(range.serialStart),
+          serialEnd: Number(range.serialEnd),
+        });
+      }
     } catch (err) {
       const data = err.response?.data;
       // 409 carries the section the student is currently in, so we can offer
       // a transfer instead of just failing.
       if (err.response?.status === 409 && data?.currentBatch) {
-        setTransferTarget({ enrollmentNo, currentBatch: data.currentBatch });
+        setPendingAdd({ enrollmentNo, userId, name: target?.name });
+        setTransferTarget({
+          enrollmentNo: enrollmentNo || target?.name,
+          currentBatch: data.currentBatch,
+        });
       } else {
         setTransferTarget(null);
       }
+    }
+  };
+
+  const onCreateStudent = async (event) => {
+    event.preventDefault();
+    try {
+      const result = await createSectionStudent(expandedId, {
+        name: newStudent.name.trim(),
+        enrollmentNo: newStudent.enrollmentNo.trim(),
+      });
+      setCredentials({
+        name: result.student.name,
+        enrollmentNo: result.student.enrollmentNo,
+        temporaryPassword: result.temporaryPassword,
+      });
+      setNewStudent({ name: "", enrollmentNo: "" });
+      await refresh(expandedId);
+    } catch {
+      // The store already surfaces the error.
+    }
+  };
+
+  const onImportCsv = async (file) => {
+    if (!file || !expandedId) return;
+    try {
+      const csv = await file.text();
+      const result = await importStudents({ csv, batchId: expandedId });
+      setImportResult(result);
+      await refresh(expandedId);
+    } catch {
+      // The store already surfaces the error.
     }
   };
 
@@ -179,17 +259,8 @@ export default function AdminBatchesPage() {
   }
 
   return (
-    <div className="min-h-screen bg-ll-bg">
-      <div className="border-b border-ll-border bg-ll-surface/95">
-        <div className="max-w-[1100px] mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
-          <Logo size="sm" />
-          <Link to="/" className="text-sm text-ll-muted hover:text-ll-text">
-            ← Back to home
-          </Link>
-        </div>
-      </div>
-
-      <div className="max-w-[1100px] mx-auto px-4 sm:px-6 py-8 space-y-8">
+    <>
+    <div className="max-w-[1100px] mx-auto px-4 sm:px-6 py-8 space-y-8">
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2">
             <Users className="w-6 h-6 text-ll-accent" />
@@ -389,31 +460,153 @@ export default function AdminBatchesPage() {
                               isSaving={isSaving}
                               onConfirm={onConfirmEnroll}
                               onCancel={dismissEnrollPreview}
+                              onAddSkipped={(student) =>
+                                onAddMember(false, {
+                                  userId: student.id,
+                                  enrollmentNo: student.enrollmentNo,
+                                  name: student.name,
+                                })
+                              }
                             />
                           )}
                         </div>
 
                         <div className="ll-panel rounded-lg p-4">
-                          <h3 className="text-sm font-semibold mb-3">
-                            Add one student
+                          <h3 className="text-sm font-semibold mb-1">
+                            Create student
                           </h3>
-                          <div className="flex flex-col sm:flex-row gap-3">
+                          <p className="text-xs text-ll-muted mb-3">
+                            Creates an account for this section. The student
+                            signs in with the enrollment number, and that number
+                            is also the temporary password. They must set a new
+                            password on first login.
+                          </p>
+                          <form
+                            onSubmit={onCreateStudent}
+                            className="grid grid-cols-1 sm:grid-cols-[1fr_1fr_auto] gap-3"
+                          >
                             <input
-                              className="ll-input flex-1 uppercase font-mono"
-                              placeholder="IU2341230001"
+                              className="ll-input w-full"
+                              placeholder="Student name"
+                              value={newStudent.name}
+                              onChange={(event) =>
+                                setNewStudent((prev) => ({
+                                  ...prev,
+                                  name: event.target.value,
+                                }))
+                              }
+                            />
+                            <input
+                              className="ll-input w-full uppercase font-mono"
+                              placeholder={`${batch.enrollmentPrefix}0001`}
+                              value={newStudent.enrollmentNo}
+                              onChange={(event) =>
+                                setNewStudent((prev) => ({
+                                  ...prev,
+                                  enrollmentNo: event.target.value.toUpperCase(),
+                                }))
+                              }
+                            />
+                            <button
+                              type="submit"
+                              disabled={isSaving}
+                              className="ll-btn-primary flex items-center justify-center gap-2"
+                            >
+                              {isSaving ? (
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                              ) : (
+                                <Plus className="w-4 h-4" />
+                              )}
+                              Create
+                            </button>
+                          </form>
+                          <label className="mt-3 inline-flex items-center gap-2 text-xs text-ll-accent cursor-pointer">
+                            <Upload className="w-3.5 h-3.5" />
+                            Import CSV into this section
+                            <input
+                              type="file"
+                              accept=".csv,text/csv"
+                              className="hidden"
+                              disabled={isSaving}
+                              onChange={(event) => {
+                                const file = event.target.files?.[0];
+                                event.target.value = "";
+                                onImportCsv(file);
+                              }}
+                            />
+                          </label>
+                          <p className="text-[11px] text-ll-muted mt-1">
+                            Columns: name, enrollment number. New accounts are
+                            added to Section {batch.name}.
+                          </p>
+                        </div>
+
+                        <div className="ll-panel rounded-lg p-4">
+                          <h3 className="text-sm font-semibold mb-1">
+                            Add an existing student
+                          </h3>
+                          <p className="text-xs text-ll-muted mb-3">
+                            Search by name, email, or enrollment number, then
+                            add them to this section.
+                          </p>
+                          <div className="relative">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-ll-muted" />
+                            <input
+                              className="ll-input w-full pl-10"
+                              placeholder="Search students"
                               value={newMember}
                               onChange={(e) => setNewMember(e.target.value)}
                             />
-                            <button
-                              type="button"
-                              onClick={() => onAddMember(false)}
-                              disabled={isSaving || !newMember.trim()}
-                              className="ll-btn-primary flex items-center justify-center gap-2"
-                            >
-                              <UserPlus className="w-4 h-4" />
-                              Add
-                            </button>
                           </div>
+                          {studentMatches.length > 0 && (
+                            <ul className="mt-3 divide-y divide-ll-border rounded-lg border border-ll-border">
+                              {studentMatches.map((student) => {
+                                const alreadyHere = batchDetail?.members?.some(
+                                  (member) => member.id === student.id,
+                                );
+                                return (
+                                  <li
+                                    key={student.id}
+                                    className="flex items-center gap-3 px-3 py-2.5"
+                                  >
+                                    <div className="min-w-0 flex-1">
+                                      <p className="text-sm truncate">
+                                        {student.name || "Unnamed"}
+                                      </p>
+                                      <p className="text-xs text-ll-muted truncate font-mono">
+                                        {student.enrollmentNo} · {student.email}
+                                      </p>
+                                    </div>
+                                    {student.provisionedByAdmin === false && (
+                                      <span className="text-[10px] uppercase tracking-wide px-2 py-0.5 rounded bg-ll-medium/15 text-ll-medium shrink-0">
+                                        Self-registered
+                                      </span>
+                                    )}
+                                    <button
+                                      type="button"
+                                      disabled={isSaving || alreadyHere}
+                                      onClick={() =>
+                                        onAddMember(false, {
+                                          userId: student.id,
+                                          enrollmentNo: student.enrollmentNo,
+                                          name: student.name,
+                                        })
+                                      }
+                                      className="ll-btn-primary text-xs py-1.5 px-3 shrink-0"
+                                    >
+                                      {alreadyHere ? "In section" : "Add"}
+                                    </button>
+                                  </li>
+                                );
+                              })}
+                            </ul>
+                          )}
+                          {newMember.trim().length >= 2 &&
+                            studentMatches.length === 0 && (
+                              <p className="text-xs text-ll-muted mt-3">
+                                No student matches that search.
+                              </p>
+                            )}
                         </div>
 
                         <MemberList
@@ -433,6 +626,113 @@ export default function AdminBatchesPage() {
       </div>
 
       <Modal
+        isOpen={!!credentials}
+        onClose={() => setCredentials(null)}
+        title="Student credentials"
+      >
+        <p className="text-sm text-ll-muted mb-4">
+          <span className="text-ll-text font-medium">{credentials?.name}</span>{" "}
+          signs in with the enrollment number. The temporary password is that
+          same number, and they must choose a new password on first login.
+        </p>
+        <div className="ll-code-block mb-4 space-y-1">
+          <p>
+            <span className="text-ll-muted">Enrollment:</span>{" "}
+            <span className="font-mono">{credentials?.enrollmentNo}</span>
+          </p>
+          <p>
+            <span className="text-ll-muted">Temporary password:</span>{" "}
+            <span className="font-mono">{credentials?.temporaryPassword}</span>
+          </p>
+        </div>
+        <div className="flex justify-end gap-2">
+          <button
+            type="button"
+            className="ll-btn-ghost"
+            onClick={() =>
+              navigator.clipboard.writeText(
+                `Enrollment: ${credentials.enrollmentNo}\nTemporary password: ${credentials.temporaryPassword}`,
+              )
+            }
+          >
+            Copy
+          </button>
+          <button
+            type="button"
+            className="ll-btn-primary"
+            onClick={() => setCredentials(null)}
+          >
+            Done
+          </button>
+        </div>
+      </Modal>
+
+      <Modal
+        isOpen={!!importResult}
+        onClose={() => setImportResult(null)}
+        title="Imported students"
+        wide
+      >
+        <p className="text-sm text-ll-muted mb-3">
+          {importResult?.createdCount ?? 0} created
+          {importResult?.skippedCount
+            ? `, ${importResult.skippedCount} skipped`
+            : ""}
+          . Each temporary password is the student's enrollment number.
+        </p>
+        {importResult?.created?.length > 0 && (
+          <div className="max-h-64 overflow-auto rounded-lg border border-ll-border mb-3">
+            <table className="w-full text-xs">
+              <thead className="sticky top-0 bg-ll-surface-2 text-ll-muted">
+                <tr>
+                  <th className="text-left font-medium px-3 py-2">Name</th>
+                  <th className="text-left font-medium px-3 py-2">Enrollment</th>
+                  <th className="text-left font-medium px-3 py-2">Password</th>
+                </tr>
+              </thead>
+              <tbody>
+                {importResult.created.map((student) => (
+                  <tr key={student.enrollmentNo} className="border-t border-ll-border">
+                    <td className="px-3 py-2">{student.name}</td>
+                    <td className="px-3 py-2 font-mono">{student.enrollmentNo}</td>
+                    <td className="px-3 py-2 font-mono">{student.temporaryPassword}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+        {importResult?.skipped?.length > 0 && (
+          <ul className="text-xs text-ll-muted mb-3 space-y-1 max-h-32 overflow-auto">
+            {importResult.skipped.map((row) => (
+              <li key={`${row.line}-${row.enrollmentNo}`}>
+                Line {row.line}
+                {row.enrollmentNo ? ` (${row.enrollmentNo})` : ""}: {row.reason}
+              </li>
+            ))}
+          </ul>
+        )}
+        <div className="flex justify-end gap-2">
+          {importResult?.created?.length > 0 && (
+            <button
+              type="button"
+              className="ll-btn-ghost"
+              onClick={() => downloadCredentials(importResult.created)}
+            >
+              Download CSV
+            </button>
+          )}
+          <button
+            type="button"
+            className="ll-btn-primary"
+            onClick={() => setImportResult(null)}
+          >
+            Done
+          </button>
+        </div>
+      </Modal>
+
+      <Modal
         isOpen={!!deleteTarget}
         onClose={() => {
           if (!isSaving) {
@@ -448,6 +748,10 @@ export default function AdminBatchesPage() {
             Section {deleteTarget?.name}
           </span>
           ? This cannot be undone.
+          {deleteTarget?.offeringCount > 0 &&
+            " Faculty allocations for this section, and the assignments under them, are removed with it."}
+          {deleteTarget?.memberCount > 0 &&
+            " Students still enrolled here have to be removed first."}
         </p>
         {deleteError && (
           <p className="text-sm text-ll-error mb-4 p-3 rounded-lg bg-ll-error/10 border border-ll-error/30">
@@ -515,12 +819,12 @@ export default function AdminBatchesPage() {
           </button>
         </div>
       </Modal>
-    </div>
+    </>
   );
 }
 
-function EnrollPreview({ preview, isSaving, onConfirm, onCancel }) {
-  const { summary, conflicts, toEnroll } = preview;
+function EnrollPreview({ preview, isSaving, onConfirm, onCancel, onAddSkipped }) {
+  const { summary, conflicts, toEnroll, skipped = [] } = preview;
 
   return (
     <div className="mt-4 pt-4 border-t border-ll-border space-y-3">
@@ -568,6 +872,35 @@ function EnrollPreview({ preview, isSaving, onConfirm, onCancel }) {
         </ul>
       )}
 
+      {skipped.length > 0 && (
+        <div className="rounded-lg bg-ll-medium/10 border border-ll-medium/30 p-3">
+          <p className="text-xs font-medium text-ll-medium mb-2">
+            Self-registered accounts in this range are not enrolled in bulk.
+            Add them only after you recognise the account.
+          </p>
+          <ul className="space-y-2">
+            {skipped.map((student) => (
+              <li
+                key={student.id}
+                className="flex items-center justify-between gap-3 text-xs"
+              >
+                <span className="font-mono text-ll-text truncate">
+                  {student.enrollmentNo} {student.name}
+                </span>
+                <button
+                  type="button"
+                  className="ll-btn-ghost text-xs shrink-0"
+                  disabled={isSaving}
+                  onClick={() => onAddSkipped?.(student)}
+                >
+                  Add
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       <div className="flex justify-end gap-2">
         <button type="button" className="ll-btn-ghost" onClick={onCancel}>
           Dismiss
@@ -587,6 +920,29 @@ function EnrollPreview({ preview, isSaving, onConfirm, onCancel }) {
       </div>
     </div>
   );
+}
+
+function downloadCredentials(students) {
+  const lines = [
+    "name,enrollment number,temporary password",
+    ...students.map(
+      (student) =>
+        `${csvCell(student.name)},${csvCell(student.enrollmentNo)},${csvCell(student.temporaryPassword)}`,
+    ),
+  ];
+  const blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = "student-credentials.csv";
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
+function csvCell(value) {
+  const text = String(value ?? "");
+  if (/[",\n]/.test(text)) return `"${text.replaceAll('"', '""')}"`;
+  return text;
 }
 
 function MemberList({ batch, isLoading, isSaving, onRemove }) {
@@ -626,7 +982,9 @@ function MemberList({ batch, isLoading, isSaving, onRemove }) {
               <div className="flex-1 min-w-0">
                 <p className="text-sm truncate">{student.name}</p>
                 <p className="text-xs text-ll-muted truncate">
-                  {student.email}
+                  {student.email?.endsWith("@students.leetlab.local")
+                    ? "Signs in with enrollment number"
+                    : student.email}
                 </p>
               </div>
               {student.provisionedByAdmin === false && (

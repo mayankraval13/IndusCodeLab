@@ -12,6 +12,14 @@ export const useAssignmentStore = create((set) => ({
   isLoading: false,
   error: null,
 
+  reset: () =>
+    set({
+      assignments: [],
+      assignment: null,
+      isLoading: false,
+      error: null,
+    }),
+
   fetchAssignments: async () => {
     try {
       set({ isLoading: true, error: null });

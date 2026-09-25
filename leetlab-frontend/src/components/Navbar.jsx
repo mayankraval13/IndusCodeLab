@@ -6,11 +6,12 @@ import {
   ClipboardList,
   Code2,
   GraduationCap,
-  Home,
+  LayoutDashboard,
   Lock,
   LogOut,
   Network,
   ScrollText,
+  UserRound,
   Users,
 } from "lucide-react";
 import { useAuthStore } from "../store/useAuthStore.js";
@@ -22,6 +23,7 @@ const ADMIN_LINKS = [
   { to: "/add-problem", label: "Add Problem", icon: Code2 },
   { to: "/admin/subjects", label: "Subjects", icon: BookOpen },
   { to: "/admin/batches", label: "Sections", icon: Users },
+  { to: "/admin/students", label: "Students", icon: UserRound },
   { to: "/admin/faculty", label: "Faculty", icon: GraduationCap },
   { to: "/admin/allocations", label: "Allocations", icon: Network },
 ];
@@ -37,6 +39,8 @@ export default function Navbar() {
   const { authUser } = useAuthStore();
   const location = useLocation();
 
+  const isDashboard =
+    location.pathname === "/" || location.pathname === "/dashboard";
   const isPracticals = location.pathname.startsWith("/practicals");
   const isProblems = location.pathname.startsWith("/problems");
   const isExams = location.pathname.startsWith("/exams");
@@ -52,10 +56,10 @@ export default function Navbar() {
         <div className="flex items-center gap-6 min-w-0">
           <Logo size="sm" />
           <nav className="hidden sm:flex items-center gap-1">
-            <Link to="/" className={navLinkClass(location.pathname === "/")}>
+            <Link to="/" className={navLinkClass(isDashboard)}>
               <span className="flex items-center gap-1.5">
-                <Home className="w-4 h-4" />
-                Home
+                <LayoutDashboard className="w-4 h-4" />
+                Dashboard
               </span>
             </Link>
             <Link to="/practicals" className={navLinkClass(isPracticals)}>

@@ -1,6 +1,6 @@
 import { X } from "lucide-react";
 
-export default function Modal({ isOpen, onClose, title, children }) {
+export default function Modal({ isOpen, onClose, title, wide, children }) {
   if (!isOpen) return null;
 
   return (
@@ -10,7 +10,11 @@ export default function Modal({ isOpen, onClose, title, children }) {
         onClick={onClose}
         aria-hidden
       />
-      <div className="relative ll-panel rounded-xl shadow-2xl w-full max-w-md overflow-hidden">
+      <div
+        className={`relative ll-panel rounded-xl shadow-2xl w-full overflow-hidden ${
+          wide ? "max-w-2xl" : "max-w-md"
+        }`}
+      >
         <div className="flex items-center justify-between px-5 py-4 border-b border-ll-border">
           <h3 className="text-lg font-semibold">{title}</h3>
           <button

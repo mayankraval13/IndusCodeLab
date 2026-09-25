@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { Routes, Route, Navigate } from "react-router-dom";
+import { Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { Toaster } from "react-hot-toast";
 import { Loader2 } from "lucide-react";
 
@@ -17,6 +17,7 @@ import AddProblem from "./page/AddProblem.jsx";
 import AdminSubjectsPage from "./page/AdminSubjectsPage.jsx";
 import AdminBatchesPage from "./page/AdminBatchesPage.jsx";
 import AdminFacultyPage from "./page/AdminFacultyPage.jsx";
+import AdminStudentsPage from "./page/AdminStudentsPage.jsx";
 import AdminAllocationsPage from "./page/AdminAllocationsPage.jsx";
 import FacultySectionsPage from "./page/FacultySectionsPage.jsx";
 import FacultyOfferingPage from "./page/FacultyOfferingPage.jsx";
@@ -24,6 +25,7 @@ import FacultyAssignmentPage from "./page/FacultyAssignmentPage.jsx";
 import StudentAssignmentsPage from "./page/StudentAssignmentsPage.jsx";
 import StudentAssignmentPage from "./page/StudentAssignmentPage.jsx";
 import RoleRoute from "./components/RoleRoute.jsx";
+import ProtectedRoute from "./components/ProtectedRoute.jsx";
 import ProblemPage from "./page/ProblemPage.jsx";
 import PracticalProblemPage from "./page/PracticalProblemPage.jsx";
 import ChangePasswordPage from "./page/ChangePasswordPage.jsx";
@@ -73,101 +75,72 @@ export default function App() {
         }}
       />
       <Routes>
-        <Route path="/" element={<Layout />}>
+        <Route element={<ProtectedRoute />}>
+          <Route path="/" element={<Layout />}>
+            <Route index element={<HomePage />} />
+            {/* Alias, so a bookmarked or linked /dashboard still lands right. */}
+            <Route path="dashboard" element={<HomePage />} />
+            <Route path="practicals" element={<PracticalsPage />} />
+            <Route
+              path="practicals/:subjectId/units/:unitId"
+              element={<PracticalUnitPage />}
+            />
+            <Route path="problems" element={<ProblemsPage />} />
+            <Route path="exams" element={<ExamsPage />} />
+            <Route path="assignments" element={<StudentAssignmentsPage />} />
+            <Route path="assignments/:id" element={<StudentAssignmentPage />} />
+
+            {/* Management pages keep the navbar: without it there is no way
+                back out of them other than the browser's back button. */}
+            <Route element={<AdminRoute />}>
+              <Route path="add-problem" element={<AddProblem />} />
+              <Route path="admin/subjects" element={<AdminSubjectsPage />} />
+              <Route path="admin/batches" element={<AdminBatchesPage />} />
+              <Route path="admin/faculty" element={<AdminFacultyPage />} />
+              <Route path="admin/students" element={<AdminStudentsPage />} />
+              <Route
+                path="admin/allocations"
+                element={<AdminAllocationsPage />}
+              />
+            </Route>
+
+            <Route element={<RoleRoute roles={["FACULTY"]} />}>
+              <Route path="faculty/sections" element={<FacultySectionsPage />} />
+              <Route
+                path="faculty/offerings/:offeringId"
+                element={<FacultyOfferingPage />}
+              />
+              <Route
+                path="faculty/assignments/:id"
+                element={<FacultyAssignmentPage />}
+              />
+            </Route>
+          </Route>
+
+          {/* Full-screen editor routes deliberately sit outside the layout. */}
+          <Route path="/problem/:id" element={<ProblemPage />} />
+          <Route path="/practical/:id" element={<PracticalProblemPage />} />
           <Route
-            index
-            element={authUser ? <HomePage /> : <Navigate to="/login" />}
-          />
-          <Route
-            path="practicals"
-            element={authUser ? <PracticalsPage /> : <Navigate to="/login" />}
-          />
-          <Route
-            path="practicals/:subjectId/units/:unitId"
-            element={
-              authUser ? <PracticalUnitPage /> : <Navigate to="/login" />
-            }
-          />
-          <Route
-            path="problems"
-            element={authUser ? <ProblemsPage /> : <Navigate to="/login" />}
-          />
-          <Route
-            path="exams"
-            element={authUser ? <ExamsPage /> : <Navigate to="/login" />}
-          />
-          <Route
-            path="assignments"
-            element={
-              authUser ? <StudentAssignmentsPage /> : <Navigate to="/login" />
-            }
-          />
-          <Route
-            path="assignments/:id"
-            element={
-              authUser ? <StudentAssignmentPage /> : <Navigate to="/login" />
-            }
+            path="/practicals/:subjectId/units/:unitId/problems/:id"
+            element={<PracticalProblemPage />}
           />
         </Route>
 
         <Route
           path="/login"
-          element={!authUser ? <LoginPage /> : <Navigate to="/" />}
+          element={!authUser ? <LoginPage /> : <RedirectAfterAuth />}
         />
         <Route
           path="/signup"
-          element={!authUser ? <SignUpPage /> : <Navigate to="/" />}
+          element={!authUser ? <SignUpPage /> : <RedirectAfterAuth />}
         />
-        <Route
-          path="/problem/:id"
-          element={authUser ? <ProblemPage /> : <Navigate to="/login" />}
-        />
-        <Route
-          path="/practical/:id"
-          element={
-            authUser ? <PracticalProblemPage /> : <Navigate to="/login" />
-          }
-        />
-        <Route
-          path="/practicals/:subjectId/units/:unitId/problems/:id"
-          element={
-            authUser ? <PracticalProblemPage /> : <Navigate to="/login" />
-          }
-        />
-        <Route element={<AdminRoute />}>
-          <Route
-            path="/add-problem"
-            element={authUser ? <AddProblem /> : <Navigate to="/" />}
-          />
-          <Route
-            path="/admin/subjects"
-            element={authUser ? <AdminSubjectsPage /> : <Navigate to="/" />}
-          />
-          <Route
-            path="/admin/batches"
-            element={authUser ? <AdminBatchesPage /> : <Navigate to="/" />}
-          />
-          <Route
-            path="/admin/faculty"
-            element={authUser ? <AdminFacultyPage /> : <Navigate to="/" />}
-          />
-          <Route
-            path="/admin/allocations"
-            element={authUser ? <AdminAllocationsPage /> : <Navigate to="/" />}
-          />
-        </Route>
-        <Route element={<RoleRoute roles={["FACULTY"]} />}>
-          <Route path="/faculty/sections" element={<FacultySectionsPage />} />
-          <Route
-            path="/faculty/offerings/:offeringId"
-            element={<FacultyOfferingPage />}
-          />
-          <Route
-            path="/faculty/assignments/:id"
-            element={<FacultyAssignmentPage />}
-          />
-        </Route>
       </Routes>
     </>
   );
+}
+
+/** Returns the user to the page that bounced them, falling back to the dashboard. */
+function RedirectAfterAuth() {
+  const location = useLocation();
+  return <Navigate to={location.state?.from ?? "/"} replace />;
 }

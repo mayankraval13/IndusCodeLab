@@ -7,6 +7,7 @@ const PREFIX = "IU234123";
 const OVERLAP_BATCH = "TEST-OVERLAP";
 const TEST_FACULTY_EMAIL = "phase2.test.faculty@iite.indusuni.ac.in";
 const STUDENT_ENROLLMENT = "IU2341230001";
+const CREATED_ENROLLMENTS = ["IU2341230901", "IU2341230902", "IU2341230903"];
 
 const prisma = new PrismaClient();
 
@@ -52,6 +53,9 @@ async function cleanup() {
     where: { enrollmentPrefix: PREFIX, name: OVERLAP_BATCH },
   });
   await prisma.user.deleteMany({ where: { email: TEST_FACULTY_EMAIL } });
+  await prisma.user.deleteMany({
+    where: { enrollmentNo: { in: CREATED_ENROLLMENTS } },
+  });
 }
 
 /**
@@ -397,6 +401,76 @@ async function main() {
     duplicateFaculty.data
   );
 
+  console.log("\n--- password reset and student filters ---");
+  const resetOwn = await call(
+    "POST",
+    `/admin/users/${admin.data.user.id}/reset-password`,
+    adminCookie
+  );
+  check("admin cannot reset their own password", resetOwn.status === 400, resetOwn.data);
+
+  const resetFaculty = await call(
+    "POST",
+    `/admin/users/${created.data.faculty.id}/reset-password`,
+    adminCookie
+  );
+  check(
+    "issues a replacement temporary password",
+    resetFaculty.status === 200 &&
+      typeof resetFaculty.data.temporaryPassword === "string" &&
+      resetFaculty.data.temporaryPassword !== created.data.temporaryPassword,
+    resetFaculty.data
+  );
+  check(
+    "reset forces another password change",
+    resetFaculty.data.user?.mustChangePassword === true,
+    resetFaculty.data.user
+  );
+
+  const oldFacultyLogin = await login(
+    TEST_FACULTY_EMAIL,
+    created.data.temporaryPassword
+  );
+  check(
+    "the previous password no longer works",
+    oldFacultyLogin.status !== 200,
+    oldFacultyLogin.data
+  );
+
+  const newFacultyLogin = await login(
+    TEST_FACULTY_EMAIL,
+    resetFaculty.data.temporaryPassword
+  );
+  check(
+    "the replacement password works",
+    newFacultyLogin.status === 200,
+    newFacultyLogin.data
+  );
+
+  const enrolledStudents = await call(
+    "GET",
+    `/admin/users?role=USER&q=${STUDENT_ENROLLMENT}&enrolled=true`,
+    adminCookie
+  );
+  check(
+    "enrolled filter returns the student's section",
+    enrolledStudents.status === 200 &&
+      enrolledStudents.data.users?.[0]?.enrollmentNo === STUDENT_ENROLLMENT &&
+      enrolledStudents.data.users?.[0]?.sections?.some((section) => section.name === "A"),
+    enrolledStudents.data.users?.[0]
+  );
+
+  const unenrolled = await call(
+    "GET",
+    `/admin/users?role=USER&q=${STUDENT_ENROLLMENT}&enrolled=false`,
+    adminCookie
+  );
+  check(
+    "unenrolled filter hides a student who is in a section",
+    unenrolled.status === 200 && unenrolled.data.total === 0,
+    unenrolled.data
+  );
+
   console.log("\n--- role changes ---");
   const promoteStudent = await call(
     "PATCH",
@@ -425,6 +499,110 @@ async function main() {
     { role: "WIZARD" }
   );
   check("rejects an unknown role value", badRoleValue.status === 400, badRoleValue.data);
+
+  console.log("\n--- create and import students ---");
+  const batchList = await call("GET", "/admin/batches", adminCookie);
+  const section = batchList.data.batches?.find(
+    (batch) => batch.enrollmentPrefix === PREFIX,
+  );
+  check("a section with the college prefix exists", Boolean(section), batchList.data);
+
+  if (section) {
+    const createdStudent = await call(
+      "POST",
+      `/admin/batches/${section.id}/students`,
+      adminCookie,
+      { name: "Phase Two Student", enrollmentNo: CREATED_ENROLLMENTS[0] },
+    );
+    check(
+      "creates a student in the section with a temporary password",
+      createdStudent.status === 201 &&
+        createdStudent.data.student?.mustChangePassword === true &&
+        createdStudent.data.student?.provisionedByAdmin === true &&
+        createdStudent.data.temporaryPassword === CREATED_ENROLLMENTS[0],
+      createdStudent.data,
+    );
+
+    const signedIn = await login(
+      CREATED_ENROLLMENTS[0],
+      createdStudent.data.temporaryPassword,
+    );
+    check(
+      "new student signs in with the enrollment number",
+      signedIn.status === 200,
+      signedIn.data,
+    );
+
+    const duplicate = await call(
+      "POST",
+      `/admin/batches/${section.id}/students`,
+      adminCookie,
+      { name: "Phase Two Student", enrollmentNo: CREATED_ENROLLMENTS[0] },
+    );
+    check("rejects a duplicate enrollment number", duplicate.status === 409, duplicate.data);
+
+    const wrongPrefix = await call(
+      "POST",
+      `/admin/batches/${section.id}/students`,
+      adminCookie,
+      { name: "Wrong Prefix", enrollmentNo: "ZZ9999990901" },
+    );
+    check(
+      "rejects an enrollment number outside the section prefix",
+      wrongPrefix.status === 400,
+      wrongPrefix.data,
+    );
+
+    const imported = await call(
+      "POST",
+      "/admin/users/students/import",
+      adminCookie,
+      {
+        csv: "name,enrollment number\nCsv One,IU2341230902\nCsv Two,IU2341230901\n,\n",
+      },
+    );
+    check(
+      "csv import creates new rows and skips bad ones",
+      imported.status === 200 &&
+        imported.data.createdCount === 1 &&
+        imported.data.skippedCount === 2 &&
+        imported.data.created[0].temporaryPassword === CREATED_ENROLLMENTS[1],
+      imported.data,
+    );
+
+    const intoSection = await call(
+      "POST",
+      "/admin/users/students/import",
+      adminCookie,
+      {
+        csv: "name,IU number\nCsv Three,IU2341230903\nOther College,ZZ0001\n",
+        batchId: section.id,
+      },
+    );
+    check(
+      "section csv enrolls matching rows and skips the rest",
+      intoSection.status === 200 &&
+        intoSection.data.createdCount === 1 &&
+        intoSection.data.skippedCount === 1,
+      intoSection.data,
+    );
+
+    const enrolledImport = await prisma.batchMember.findFirst({
+      where: {
+        batchId: section.id,
+        user: { enrollmentNo: CREATED_ENROLLMENTS[2] },
+      },
+    });
+    check("imported student is a member of the section", Boolean(enrolledImport));
+
+    const looseImport = await prisma.batchMember.findFirst({
+      where: { user: { enrollmentNo: CREATED_ENROLLMENTS[1] } },
+    });
+    check(
+      "students page import creates the account without enrolling it",
+      looseImport === null,
+    );
+  }
 
   const promoteFaculty = await call(
     "PATCH",
