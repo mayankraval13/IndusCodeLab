@@ -30,7 +30,7 @@ app.use(
   }),
 );
 app.get("/", (req, res) => {
-  res.send("Hello, Guys welcome to leetlab!");
+  res.send("Hello, welcome to IndusCodeLab!");
 });
 
 app.use("/api/v1/auth", authRoutes);

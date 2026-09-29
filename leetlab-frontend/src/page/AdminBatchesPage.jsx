@@ -982,7 +982,8 @@ function MemberList({ batch, isLoading, isSaving, onRemove }) {
               <div className="flex-1 min-w-0">
                 <p className="text-sm truncate">{student.name}</p>
                 <p className="text-xs text-ll-muted truncate">
-                  {student.email?.endsWith("@students.leetlab.local")
+                  {student.email?.endsWith("@students.induscodelab.local") ||
+                  student.email?.endsWith("@students.leetlab.local")
                     ? "Signs in with enrollment number"
                     : student.email}
                 </p>

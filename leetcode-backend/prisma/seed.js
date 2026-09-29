@@ -184,9 +184,9 @@ const PRACTICALS_BY_UNIT = {
         "Read a single line of text. Print the number of vowels (a, e, i, o, u — case insensitive).",
       difficulty: Difficulty.EASY,
       tags: ["strings", "practical"],
-      exampleInput: "LeetLab",
-      exampleOutput: "3",
-      explanation: "Vowels in 'LeetLab' are e, e, a → 3.",
+      exampleInput: "IndusCodeLab",
+      exampleOutput: "5",
+      explanation: "Vowels in 'IndusCodeLab' are i, u, o, e, a → 5.",
       snippets: runModeSnippets({
         cBody:
           '    char s[1001];\n    fgets(s, sizeof(s), stdin);\n    // Write your code here\n',

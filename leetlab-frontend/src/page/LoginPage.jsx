@@ -33,7 +33,7 @@ export default function LoginPage() {
             <Logo />
             <h1 className="text-2xl font-bold mt-6">Sign in</h1>
             <p className="text-ll-muted mt-1 text-sm">
-              Continue your interview prep on LeetLab
+              Continue your coursework on IndusCodeLab
             </p>
           </div>
 

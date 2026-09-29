@@ -44,7 +44,7 @@ export default function SignUpPage() {
           <div className="mb-10">
             <Logo />
             <h1 className="text-2xl font-bold mt-6">Create account</h1>
-            <p className="text-ll-muted mt-1 text-sm">Join LeetLab and start solving today</p>
+            <p className="text-ll-muted mt-1 text-sm">Join IndusCodeLab and start solving today</p>
           </div>
 
           <form onSubmit={handleSubmit((data) => signup(data))} className="space-y-5">

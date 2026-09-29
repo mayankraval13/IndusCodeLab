@@ -14,7 +14,7 @@ export default function Logo({ to = "/", showText = true, size = "md" }) {
       </div>
       {showText && (
         <span className={`${textSize} font-bold tracking-tight`}>
-          Leet<span className="text-ll-accent">Lab</span>
+          Indus<span className="text-ll-accent">Code</span>Lab
         </span>
       )}
     </Link>

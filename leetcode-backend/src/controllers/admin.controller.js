@@ -172,7 +172,7 @@ const ENROLLMENT_PATTERN = /^[A-Z0-9]{4,32}$/;
 const MAX_STUDENT_IMPORT = 500;
 
 const internalStudentEmail = (enrollmentNo) =>
-  `${enrollmentNo.toLowerCase()}@students.leetlab.local`;
+  `${enrollmentNo.toLowerCase()}@students.induscodelab.local`;
 
 const splitCsvLine = (line) => {
   const cells = [];

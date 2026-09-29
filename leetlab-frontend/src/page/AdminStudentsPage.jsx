@@ -216,7 +216,8 @@ export default function AdminStudentsPage() {
                   <p className="text-xs text-ll-muted truncate">
                     <span className="font-mono">{student.enrollmentNo}</span>
                     {" · "}
-                    {student.email?.endsWith("@students.leetlab.local")
+                    {student.email?.endsWith("@students.induscodelab.local") ||
+                    student.email?.endsWith("@students.leetlab.local")
                       ? "Signs in with enrollment number"
                       : student.email}
                   </p>
